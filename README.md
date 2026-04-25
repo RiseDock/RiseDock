@@ -1,7 +1,7 @@
 # 启程典 (RiseDock)
 
 <p align="center">
-  <img src="./public/logo.png" width="400" alt="启程典">
+  <img src="./public/logo.png" width="600" alt="启程典">
 </p>
 
 <p align="center">
