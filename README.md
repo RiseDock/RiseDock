@@ -136,6 +136,20 @@ risedock/
 └── README.md
 ```
 
+## 交流群
+
+<p align="center">
+  <strong>扫码加入启程典官方微信交流群</strong>
+</p>
+
+<p align="center">
+  <img src="./public/risedock_wechat_qrcode.jpg" width="300" alt="启程典官方交流群">
+</p>
+
+<p align="center">
+  反馈问题、提建议、交流使用心得，欢迎进群聊 🎉
+</p>
+
 ## 授权
 
 本项目基于 [MIT License](LICENSE) 开源。
