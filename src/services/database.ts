@@ -33,6 +33,18 @@ export async function initDb(): Promise<Database> {
       FOREIGN KEY (scene_id) REFERENCES scenes(id) ON DELETE CASCADE
     )
   `);
+
+  // 迁移：如果旧表有 type 列，重命名为 item_type
+  try {
+    const cols = await db.select<Array<{ name: string }>>("PRAGMA table_info(launch_items)");
+    const colNames = cols.map(c => c.name);
+    if (colNames.includes('type') && !colNames.includes('item_type')) {
+      await db.execute('ALTER TABLE launch_items RENAME COLUMN type TO item_type');
+      console.log('已迁移 launch_items.type → item_type');
+    }
+  } catch (e) {
+    console.warn('列迁移检查跳过:', e);
+  }
   
   await db.execute(`
     CREATE TABLE IF NOT EXISTS license (
@@ -78,18 +90,18 @@ export async function loadScenesFromDb(): Promise<any[]> {
   // 查询每个场景的启动项
   for (const scene of scenes) {
     const items = await database.select<any[]>(
-      `SELECT id, scene_id, name, path, type, delay, order_index, enabled 
+      `SELECT id, scene_id, name, path, item_type, delay, order_index, enabled 
        FROM launch_items WHERE scene_id = ? ORDER BY order_index`,
       [scene.id]
     );
     
-    // 转换字段名
+    // 转换字段名（数据库 item_type → 前端 type）
     scene.items = items.map(item => ({
       id: item.id,
       sceneId: item.scene_id,
       name: item.name,
       path: item.path,
-      item_type: item.type,
+      type: item.item_type,
       delay: item.delay,
       order: item.order_index,
       enabled: item.enabled === 1,
@@ -130,9 +142,9 @@ export async function saveScenesToDb(scenes: any[]): Promise<void> {
       // 插入所有启动项
       for (const item of scene.items) {
         await database.execute(
-          `INSERT INTO launch_items (id, scene_id, name, path, type, delay, order_index, enabled) 
+          `INSERT INTO launch_items (id, scene_id, name, path, item_type, delay, order_index, enabled) 
            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [item.id, item.sceneId, item.name, item.path, item.item_type, item.delay, item.order, item.enabled ? 1 : 0]
+          [item.id, item.sceneId, item.name, item.path, item.type, item.delay, item.order, item.enabled ? 1 : 0]
         );
       }
     }

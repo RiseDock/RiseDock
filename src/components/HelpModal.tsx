@@ -179,7 +179,7 @@ export default function HelpModal({ onClose }: HelpModalProps) {
               <SectionCard icon="📁" title="场景管理">
                 <ul style={listStyle}>
                   <li><strong style={labelStyle}>新建场景</strong>：点左侧底部「+」按钮，自动命名"新场景"</li>
-                  <li><strong style={labelStyle}>重命名场景</strong>：鼠标悬停到场景上，点 ✏️ 按钮；或右键场景选「编辑名称」</li>
+                  <li><strong style={labelStyle}>重命名场景</strong>：鼠标悬停到场景上，点 ✏️ 按钮；或右键场景选「编辑名称」，修改后按 Enter 确认、Esc 取消</li>
                   <li><strong style={labelStyle}>删除场景</strong>：鼠标悬停点 🗑️；或右键选「删除场景」</li>
                   <li><strong style={labelStyle}>进入场景详情</strong>：直接点击场景名称即可</li>
                   <li><strong style={labelStyle}>场景数量限制</strong>：免费版最多 1 个场景，激活版不限</li>
@@ -211,9 +211,9 @@ export default function HelpModal({ onClose }: HelpModalProps) {
 
               {/* 右键菜单 */}
               <SectionCard icon="🖱️" title="右键菜单">
-                <p style={{ margin: '0 0 8px', color: '#9ca3af', fontSize: '13px' }}>在左侧场景列表中，右键点击任意场景，可快速执行以下操作：</p>
+                <p style={{ margin: '0 0 8px', color: '#9ca3af', fontSize: '13px' }}>在左侧场景列表或主窗口的场景卡片上，右键点击均可执行以下操作：</p>
                 <ul style={listStyle}>
-                  <li><strong style={labelStyle}>编辑名称</strong>：快速重命名</li>
+                  <li><strong style={labelStyle}>编辑名称</strong>：进入编辑模式，修改后按 <kbd style={{ background: 'rgba(102,126,234,0.2)', padding: '1px 6px', borderRadius: '4px', fontSize: '12px' }}>Enter</kbd> 确认，按 <kbd style={{ background: 'rgba(102,126,234,0.2)', padding: '1px 6px', borderRadius: '4px', fontSize: '12px' }}>Esc</kbd> 取消</li>
                   <li><strong style={labelStyle}>设置快捷键</strong>：为场景绑定快捷键</li>
                   <li><strong style={labelStyle}>删除场景</strong>：删除该场景及其中所有启动项</li>
                 </ul>

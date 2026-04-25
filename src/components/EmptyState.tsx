@@ -32,7 +32,7 @@ export default function EmptyState({ onSetHotkey }: EmptyStateProps) {
 
   const handleSaveEdit = () => {
     if (editingSceneId && editingName.trim()) {
-      updateScene(editingSceneId, { name: editingName.trim() });
+      updateScene(editingSceneId, editingName.trim());
       showToast(`场景已重命名为「${editingName.trim()}」`, 'success');
     }
     setEditingSceneId(null);
