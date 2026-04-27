@@ -215,6 +215,7 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
       
       // 从数据库加载场景
       const scenes = await loadScenesFromDb();
+      console.log(`[loadFromStorage] 从 SQLite 加载 ${scenes.length} 个场景`);
       
       // 确保所有启动项都有 enabled 和 pinned 字段
       const processedScenes = scenes.map((scene: Scene) => ({
@@ -228,14 +229,17 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
       
       // 默认显示空页面，不自动选中第一个场景
       set({ scenes: processedScenes, selectedSceneId: null, isLoading: false });
+      // SQLite 加载成功后清理 localStorage 残留
+      localStorage.removeItem('qicheng-dian-scenes');
     } catch (err) {
-      console.error('加载数据失败:', err);
+      console.error('[loadFromStorage] 加载失败:', err);
       
       // 如果数据库加载失败，尝试从 localStorage 加载
       const saved = localStorage.getItem('qicheng-dian-scenes');
       if (saved) {
         try {
           const scenes = JSON.parse(saved);
+          console.log(`[loadFromStorage] 从 localStorage 加载 ${scenes.length} 个场景`);
           const processedScenes = scenes.map((scene: Scene) => ({
             ...scene,
             items: (scene.items || []).map((item: LaunchItem) => ({
@@ -245,7 +249,7 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
           }));
           set({ scenes: processedScenes, selectedSceneId: null, isLoading: false });
         } catch {
-          console.error('从 localStorage 加载也失败');
+          console.error('[loadFromStorage] 从 localStorage 加载也失败');
           set({ scenes: [], selectedSceneId: null, isLoading: false });
         }
       } else {
@@ -258,9 +262,13 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
   saveToStorage: async () => {
     try {
       const { scenes } = get();
+      console.log(`[saveToStorage] 保存 ${scenes.length} 个场景, ${scenes.reduce((sum, s) => sum + (s.items?.length || 0), 0)} 个启动项`);
       await saveScenesToDb(scenes);
+      console.log('[saveToStorage] 保存成功');
+      // SQLite 保存成功后清理 localStorage 残留
+      localStorage.removeItem('qicheng-dian-scenes');
     } catch (err) {
-      console.error('保存数据失败:', err);
+      console.error('[saveToStorage] 保存失败:', err);
       // 备用：保存到 localStorage
       const { scenes } = get();
       localStorage.setItem('qicheng-dian-scenes', JSON.stringify(scenes));
@@ -281,7 +289,7 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
     }
   },
 
-  // 从文件导入场景
+  // 从文件导入场景（替换模式：清空当前数据，只保留导入的数据）
   importFromFile: async (filePath: string) => {
     try {
       const { readTextFile } = await import('@tauri-apps/plugin-fs');
@@ -292,37 +300,28 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
         return { imported: 0, skipped: 0, errors: ['导入文件中没有场景数据'] };
       }
       
-      const currentScenes = get().scenes;
-      let imported = 0;
-      let skipped = 0;
+      // 清理 localStorage 残留数据（防止历史残留导致重复）
+      localStorage.removeItem('qicheng-dian-scenes');
       
-      const newScenes = [...currentScenes];
-      for (const scene of importedScenes) {
-        // 检查是否已存在同名场景
-        const exists = newScenes.some(s => s.name === scene.name);
-        if (exists) {
-          skipped++;
-          continue;
-        }
-        
-        // 生成新ID
-        const newScene: Scene = {
+      // 为所有导入的场景生成新ID（防止ID冲突）
+      const newScenes = importedScenes.map((scene: Scene) => {
+        const newSceneId = uuidv4();
+        return {
           ...scene,
-          id: crypto.randomUUID(),
-          items: scene.items.map((item: LaunchItem) => ({
+          id: newSceneId,
+          items: (scene.items || []).map((item: LaunchItem) => ({
             ...item,
-            id: crypto.randomUUID(),
+            id: uuidv4(),
+            sceneId: newSceneId,  // 必须同步更新 sceneId，否则外键约束失败
           })),
         };
-        newScenes.push(newScene);
-        imported++;
-      }
+      });
       
-      // 更新 store 并保存
-      set({ scenes: newScenes });
+      // 直接替换当前数据
+      set({ scenes: newScenes, selectedSceneId: null });
       await get().saveToStorage();
       
-      return { imported, skipped, errors: [] };
+      return { imported: newScenes.length, skipped: 0, errors: [] };
     } catch (err) {
       console.error('导入失败:', err);
       throw err;

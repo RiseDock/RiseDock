@@ -71,9 +71,9 @@ pub fn run() {
             // 数据存储
             storage::get_data_path,
             storage::get_db_path_cmd,
+            storage::init_database,
             storage::save_scenes,
             storage::load_scenes,
-            storage::init_database,
             storage::export_scenes,
             storage::import_scenes,
             storage::get_subdirectories,

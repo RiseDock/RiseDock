@@ -253,7 +253,7 @@ export default function Sidebar({ onOpenLicense, onOpenHelp, onSetHotkey, onScen
           color: '#6b7280',
           letterSpacing: '0.5px',
         }}>
-          v1.0.2
+          v1.0.3
         </span>
       </div>
 

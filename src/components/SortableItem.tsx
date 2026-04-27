@@ -154,7 +154,7 @@ export default function SortableItem({ item, sceneId, onEdit, highlightedId }: S
             color: item.enabled ? '#fff' : '#475569', fontSize: '12px', fontWeight: 500,
           }}
         >
-          启动
+          🚀 启动
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onEdit(item); }}

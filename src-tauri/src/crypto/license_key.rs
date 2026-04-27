@@ -32,13 +32,21 @@ fn get_obfuscated_key() -> [u8; 32] {
 /// 验证授权码
 pub fn verify_license_key(license_key: &str, machine_code: &str) -> Result<LicensePayload, Box<dyn Error>> {
     // Base64解码
-    let decoded = BASE64.decode(license_key.trim())?;
+    let decoded = BASE64.decode(license_key.trim())
+        .map_err(|e| {
+            let msg = e.to_string();
+            // 将 base64 crate 的技术性错误转为中文友好提示
+            if msg.contains("Invalid padding") || msg.contains("Invalid byte") || msg.contains("Invalid length") {
+                return format!("授权码格式不正确，请检查是否完整复制");
+            }
+            format!("授权码格式不正确")
+        })?;
     let content = String::from_utf8_lossy(&decoded);
 
     // 分离payload和signature
     let parts: Vec<&str> = content.split('\n').collect();
     if parts.len() != 2 {
-        return Err("Invalid license format".into());
+        return Err("授权码格式已损坏，请联系客服获取新的授权码".into());
     }
 
     let payload_str = parts[0];
@@ -51,21 +59,22 @@ pub fn verify_license_key(license_key: &str, machine_code: &str) -> Result<Licen
     let expected_sig = mac.finalize().into_bytes();
 
     if hex::encode(expected_sig) != signature_hex {
-        return Err("Invalid signature".into());
+        return Err("授权码无效，签名验证失败".into());
     }
 
     // 反序列化payload
-    let mut payload: LicensePayload = serde_json::from_str(payload_str)?;
+    let mut payload: LicensePayload = serde_json::from_str(payload_str)
+        .map_err(|e| -> Box<dyn Error> { format!("授权码数据解析失败: {}", e).into() })?;
 
     // 验证机器码匹配
     if payload.machine_code != machine_code {
-        return Err("Machine code mismatch".into());
+        return Err("授权码与本机不匹配，请确认是否使用了正确的机器码".into());
     }
 
     // 验证未过期
     let now = chrono::Utc::now().timestamp();
     if payload.expires_at < now {
-        return Err("License expired".into());
+        return Err("授权码已过期，请联系客服续期".into());
     }
 
     // 混淆机器码验证（额外安全检查）

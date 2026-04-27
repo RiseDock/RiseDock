@@ -178,7 +178,7 @@ export default function HelpModal({ onClose }: HelpModalProps) {
               {/* 场景管理 */}
               <SectionCard icon="📁" title="场景管理">
                 <ul style={listStyle}>
-                  <li><strong style={labelStyle}>新建场景</strong>：点左侧底部「+」按钮，自动命名"新场景"</li>
+                  <li><strong style={labelStyle}>新建场景</strong>：点左侧「+ 新建场景」按钮，自动命名为"新场景"</li>
                   <li><strong style={labelStyle}>重命名场景</strong>：鼠标悬停到场景上，点 ✏️ 按钮；或右键场景选「编辑名称」，修改后按 Enter 确认、Esc 取消</li>
                   <li><strong style={labelStyle}>删除场景</strong>：鼠标悬停点 🗑️；或右键选「删除场景」</li>
                   <li><strong style={labelStyle}>进入场景详情</strong>：直接点击场景名称即可</li>
@@ -190,12 +190,12 @@ export default function HelpModal({ onClose }: HelpModalProps) {
               <SectionCard icon="🚀" title="启动项管理">
                 <ul style={listStyle}>
                   <li><strong style={labelStyle}>添加启动项</strong>：进入场景详情，点「添加启动项」，选择类型（程序/文件/文件夹/网址/图片），填写名称和路径</li>
-                  <li><strong style={labelStyle}>批量添加</strong>：点「批量添加」，可一次选择多个 .exe 程序快速导入（激活版专属）</li>
-                  <li><strong style={labelStyle}>设置启动延迟</strong>：每个启动项可设置延迟秒数，错开启动时间避免卡顿</li>
-                  <li><strong style={labelStyle}>拖拽排序</strong>：按住左侧「⋮⋮」手柄上下拖动，调整启动顺序</li>
-                  <li><strong style={labelStyle}>启用/禁用</strong>：点开关按钮，关掉后启动场景时不会运行该启动项</li>
+                  <li><strong style={labelStyle}>批量添加</strong>：点「批量添加」，可一次选择多个程序、文件等快速导入（激活版专属）</li>
+                  <li><strong style={labelStyle}>设置启动延迟</strong>：每个启动项可设置延迟秒数，错开启动时间避免卡顿（即将支持）</li>
+                  <li><strong style={labelStyle}>拖拽排序</strong>：按住每个启动项最左侧的「⋮⋮」手柄上下拖动，调整启动顺序</li>
+                  <li><strong style={labelStyle}>启用/禁用</strong>：点启动项左侧的滑块开关，关闭后启动场景时不会运行该启动项</li>
                   <li><strong style={labelStyle}>删除</strong>：点「🗑️ 删除」按钮移除启动项</li>
-                  <li><strong style={labelStyle}>单项启动</strong>：点启动项右侧的「🚀」按钮可单独运行它</li>
+                  <li><strong style={labelStyle}>单项启动</strong>：点启动项右侧的「🚀 启动」按钮可单独运行它</li>
                   <li><strong style={labelStyle}>启动项数量限制</strong>：免费版每场景最多 3 个，激活版不限</li>
                 </ul>
               </SectionCard>
@@ -231,9 +231,9 @@ export default function HelpModal({ onClose }: HelpModalProps) {
               {/* 窗口操作 */}
               <SectionCard icon="🪟" title="窗口操作">
                 <ul style={listStyle}>
-                  <li><strong style={labelStyle}>最小化</strong>：点标题栏「─」按钮最小化到任务栏</li>
-                  <li><strong style={labelStyle}>最大化</strong>：点「□」按钮最大化/还原窗口</li>
-                  <li><strong style={labelStyle}>关闭</strong>：点「✕」按钮，弹出选择「最小化到托盘」或「退出程序」</li>
+                  <li><strong style={labelStyle}>最小化</strong>：点软件窗口右上角的「─」按钮，最小化到任务栏</li>
+                  <li><strong style={labelStyle}>最大化</strong>：点软件窗口右上角的「□」按钮，最大化/还原窗口</li>
+                  <li><strong style={labelStyle}>关闭</strong>：点软件窗口右上角的「✕」按钮，弹出选择「最小化到托盘」或「退出程序」</li>
                   <li><strong style={labelStyle}>最小化到托盘</strong>：关闭后软件缩到右下角系统托盘，双击托盘图标重新打开</li>
                 </ul>
               </SectionCard>

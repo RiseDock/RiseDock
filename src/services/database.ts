@@ -9,6 +9,13 @@ export async function initDb(): Promise<Database> {
   // 使用 SQLite 数据库
   db = await Database.load('sqlite:risedock.db');
   
+  // 关键：开启外键约束（SQLite 默认关闭）
+  await db.execute('PRAGMA foreign_keys = ON');
+  // 确保使用 WAL 模式以避免读写锁冲突
+  await db.execute('PRAGMA journal_mode = WAL');
+  // 设置 WAL 自动 checkpoint 阈值
+  await db.execute('PRAGMA wal_autocheckpoint = 500');
+  
   // 创建表
   await db.execute(`
     CREATE TABLE IF NOT EXISTS scenes (
@@ -30,6 +37,7 @@ export async function initDb(): Promise<Database> {
       delay INTEGER DEFAULT 0,
       order_index INTEGER DEFAULT 0,
       enabled INTEGER DEFAULT 1,
+      pinned INTEGER DEFAULT 0,
       FOREIGN KEY (scene_id) REFERENCES scenes(id) ON DELETE CASCADE
     )
   `);
@@ -44,6 +52,18 @@ export async function initDb(): Promise<Database> {
     }
   } catch (e) {
     console.warn('列迁移检查跳过:', e);
+  }
+
+  // 迁移：如果旧表没有 pinned 列，添加它
+  try {
+    const cols = await db.select<Array<{ name: string }>>("PRAGMA table_info(launch_items)");
+    const colNames = cols.map(c => c.name);
+    if (!colNames.includes('pinned')) {
+      await db.execute('ALTER TABLE launch_items ADD COLUMN pinned INTEGER DEFAULT 0');
+      console.log('已迁移 launch_items 添加 pinned 列');
+    }
+  } catch (e) {
+    console.warn('pinned 列迁移检查跳过:', e);
   }
   
   await db.execute(`
@@ -90,7 +110,7 @@ export async function loadScenesFromDb(): Promise<any[]> {
   // 查询每个场景的启动项
   for (const scene of scenes) {
     const items = await database.select<any[]>(
-      `SELECT id, scene_id, name, path, item_type, delay, order_index, enabled 
+      `SELECT id, scene_id, name, path, item_type, delay, order_index, enabled, pinned
        FROM launch_items WHERE scene_id = ? ORDER BY order_index`,
       [scene.id]
     );
@@ -105,6 +125,7 @@ export async function loadScenesFromDb(): Promise<any[]> {
       delay: item.delay,
       order: item.order_index,
       enabled: item.enabled === 1,
+      pinned: item.pinned === 1,
     }));
     
     scene.order = scene.order_index;
@@ -119,40 +140,54 @@ export async function loadScenesFromDb(): Promise<any[]> {
 }
 
 // 保存所有场景
+// 策略：先插入/更新新数据（INSERT OR REPLACE），再删除不在列表中的旧数据
+// 不用事务（@tauri-apps/plugin-sql 不支持 BEGIN/COMMIT），但保证即使中途失败旧数据不丢
 export async function saveScenesToDb(scenes: any[]): Promise<void> {
   const database = await getDb();
   
-  // 使用事务
-  await database.execute('BEGIN TRANSACTION');
-  
-  try {
-    // 清空所有启动项
-    await database.execute('DELETE FROM launch_items');
+  // 第一步：先插入/更新所有场景和启动项（INSERT OR REPLACE 保证幂等）
+  for (const scene of scenes) {
+    await database.execute(
+      `INSERT OR REPLACE INTO scenes (id, name, order_index, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+      [scene.id, scene.name, scene.order ?? 0, scene.createdAt ?? 0, scene.updatedAt ?? 0]
+    );
     
-    // 清空所有场景
-    await database.execute('DELETE FROM scenes');
-    
-    // 插入所有场景
-    for (const scene of scenes) {
+    const items = scene.items || [];
+    for (const item of items) {
       await database.execute(
-        'INSERT INTO scenes (id, name, order_index, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
-        [scene.id, scene.name, scene.order, scene.createdAt, scene.updatedAt]
+        `INSERT OR REPLACE INTO launch_items (id, scene_id, name, path, item_type, delay, order_index, enabled, pinned) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [item.id, item.sceneId, item.name, item.path, item.type, item.delay ?? 0, item.order ?? 0, item.enabled ? 1 : 0, item.pinned ? 1 : 0]
       );
-      
-      // 插入所有启动项
-      for (const item of scene.items) {
-        await database.execute(
-          `INSERT INTO launch_items (id, scene_id, name, path, item_type, delay, order_index, enabled) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [item.id, item.sceneId, item.name, item.path, item.type, item.delay, item.order, item.enabled ? 1 : 0]
-        );
-      }
     }
-    
-    await database.execute('COMMIT');
-  } catch (e) {
-    await database.execute('ROLLBACK');
-    throw e;
+  }
+  
+  // 第二步：收集当前有效的 ID
+  const validSceneIds = scenes.map((s: any) => s.id);
+  const validItemIds = scenes.flatMap((s: any) => (s.items || []).map((i: any) => i.id));
+  
+  // 第三步：删除不在新列表中的旧数据（只删多余的，不删刚插入的）
+  if (validSceneIds.length > 0) {
+    await database.execute(
+      'DELETE FROM launch_items WHERE scene_id NOT IN (' + validSceneIds.map(() => '?').join(',') + ')',
+      validSceneIds
+    );
+    await database.execute(
+      'DELETE FROM scenes WHERE id NOT IN (' + validSceneIds.map(() => '?').join(',') + ')',
+      validSceneIds
+    );
+  }
+  if (validItemIds.length > 0) {
+    await database.execute(
+      'DELETE FROM launch_items WHERE id NOT IN (' + validItemIds.map(() => '?').join(',') + ')',
+      validItemIds
+    );
+  }
+  
+  // 第四步：如果是空列表（清空所有），直接删
+  if (scenes.length === 0) {
+    await database.execute('DELETE FROM launch_items');
+    await database.execute('DELETE FROM scenes');
   }
 }
 
@@ -238,30 +273,4 @@ export async function deleteSetting(key: string): Promise<void> {
     'DELETE FROM settings WHERE key = ?',
     [key]
   );
-}
-
-// ==================== 迁移工具 ====================
-
-// 从 JSON 文件迁移到 SQLite
-export async function migrateFromJson(): Promise<void> {
-  try {
-    const scenes = await loadScenesFromDb();
-    
-    // 如果数据库已经有数据，跳过迁移
-    if (scenes.length > 0) {
-      console.log('数据库已有数据，跳过迁移');
-      return;
-    }
-    
-    // 尝试从旧 JSON 文件加载
-    const { invoke } = await import('@tauri-apps/api/core');
-    const oldScenes = await invoke<any[]>('load_scenes');
-    
-    if (oldScenes && oldScenes.length > 0) {
-      await saveScenesToDb(oldScenes);
-      console.log('已从 JSON 文件迁移到 SQLite');
-    }
-  } catch (e) {
-    console.error('迁移失败:', e);
-  }
 }
