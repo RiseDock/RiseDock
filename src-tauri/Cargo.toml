@@ -1,6 +1,6 @@
 [package]
 name = "risedock"
-version = "1.0.3"
+version = "1.0.4"
 description = "RiseDock - 场景化工作环境启动工具"
 authors = ["RiseDock"]
 edition = "2021"

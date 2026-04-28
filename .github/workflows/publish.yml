@@ -42,7 +42,13 @@ jobs:
         with:
           tagName: app-v__VERSION__
           releaseName: 'RiseDock v__VERSION__'
-          releaseBody: 'See the assets to download this version and install.'
+          releaseBody: |
+  **更新内容：**
+  - 优化用户体验
+  - 修复已知问题
+  - 提升稳定性
+
+  点击「立即更新」下载并安装新版本。
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}

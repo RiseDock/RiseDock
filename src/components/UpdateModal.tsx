@@ -14,9 +14,27 @@ interface UpdateModalProps {
 
 export default function UpdateModal({ onClose }: UpdateModalProps) {
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+
+  // 格式化ISO日期为 "年-月-日 时:分:秒"
+  const formatDate = (isoDate: string): string => {
+    try {
+      const d = new Date(isoDate);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const hours = String(d.getHours()).padStart(2, '0');
+      const minutes = String(d.getMinutes()).padStart(2, '0');
+      const seconds = String(d.getSeconds()).padStart(2, '0');
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    } catch {
+      return isoDate;
+    }
+  };
   const [checking, setChecking] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [downloadedSize, setDownloadedSize] = useState(0);
+  const [totalSize, setTotalSize] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [noUpdate, setNoUpdate] = useState(false);
 
@@ -24,8 +42,10 @@ export default function UpdateModal({ onClose }: UpdateModalProps) {
     setChecking(true);
     setError(null);
     try {
-      const update = await check();
+      const update = await check({ timeout: 30000 });
       if (update) {
+        console.log('[Updater] 版本:', update.version, '日期:', update.date, '说明:', update.body);
+        console.log('[Updater] 下载URL:', update.rawJson?.platforms);
         setUpdateInfo({
           version: update.version,
           date: update.date,
@@ -50,28 +70,34 @@ export default function UpdateModal({ onClose }: UpdateModalProps) {
     if (!updateInfo) return;
     setDownloading(true);
     setError(null);
+    setDownloadedSize(0);
+    setTotalSize(0);
     try {
-      const update = await check();
+      const update = await check({ timeout: 30000 });
       if (!update) {
         setError('更新信息已过期，请重新检查');
         setDownloading(false);
         return;
       }
+      let downloaded = 0;
       await update.downloadAndInstall((event) => {
         switch (event.event) {
           case 'Started':
             setProgress(0);
+            setTotalSize(event.data.contentLength ?? 0);
             break;
           case 'Progress':
+            downloaded += event.data.chunkLength;
+            setDownloadedSize(downloaded);
             if (event.data.contentLength) {
-              setProgress(Math.round((event.data.chunkLength / event.data.contentLength) * 100));
+              setProgress(Math.round((downloaded / event.data.contentLength) * 100));
             }
             break;
           case 'Finished':
             setProgress(100);
             break;
         }
-      });
+      }, { timeout: 300000 });
       await relaunch();
     } catch (e) {
       console.error('下载更新失败:', e);
@@ -179,11 +205,13 @@ export default function UpdateModal({ onClose }: UpdateModalProps) {
               发现新版本 v{updateInfo.version}
             </h3>
             <p style={{ color: '#8b949e', fontSize: '13px', margin: '0 0 16px' }}>
-              {updateInfo.body || '优化体验，修复已知问题'}
+              {updateInfo.body === 'See the assets to download this version and install.' 
+                ? '优化体验，修复已知问题' 
+                : (updateInfo.body || '优化体验，修复已知问题')}
             </p>
             {updateInfo.date && (
               <p style={{ color: '#6b7280', fontSize: '12px', margin: '0 0 20px' }}>
-                发布日期：{updateInfo.date}
+                发布日期：{formatDate(updateInfo.date)}
               </p>
             )}
             <div style={{ display: 'flex', gap: '12px' }}>
@@ -239,7 +267,7 @@ export default function UpdateModal({ onClose }: UpdateModalProps) {
               }} />
             </div>
             <p style={{ color: '#8b949e', fontSize: '12px', margin: '0' }}>
-              {progress}% - 下载完成后将自动安装并重启
+              {progress}%{totalSize > 0 ? ` (${(downloadedSize / 1024 / 1024).toFixed(1)}MB / ${(totalSize / 1024 / 1024).toFixed(1)}MB)` : ''} - 下载完成后将自动安装并重启
             </p>
           </>
         )}
