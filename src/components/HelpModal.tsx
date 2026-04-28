@@ -168,20 +168,21 @@ export default function HelpModal({ onClose }: HelpModalProps) {
               {/* 快速上手 */}
               <SectionCard icon="🎯" title="快速上手">
                 <ol style={{ ...listStyle, paddingLeft: '20px' }}>
-                  <li>左侧点击 <strong style={labelStyle}>「+ 新建场景」</strong>，创建你的第一个场景（比如"上班"）</li>
-                  <li>点击刚创建的场景，进入右侧详情页</li>
+                  <li>点击顶部工具栏的 <strong style={labelStyle}>「+ 新建场景」</strong>，创建你的第一个场景（比如"上班"）</li>
+                  <li>点击场景卡片上的 <strong style={labelStyle}>「✏️ 编辑」</strong> 按钮，进入场景详情页</li>
                   <li>点击 <strong style={labelStyle}>「添加启动项」</strong>，选择程序、文件或网址</li>
-                  <li>需要启动时，点击场景卡片上的 <strong style={labelStyle}>「🚀」</strong> 按钮，一键全部打开</li>
+                  <li>需要启动时，点击场景卡片上的 <strong style={labelStyle}>「🚀 启动」</strong> 按钮，一键全部打开</li>
                 </ol>
               </SectionCard>
 
               {/* 场景管理 */}
               <SectionCard icon="📁" title="场景管理">
                 <ul style={listStyle}>
-                  <li><strong style={labelStyle}>新建场景</strong>：点左侧「+ 新建场景」按钮，自动命名为"新场景"</li>
-                  <li><strong style={labelStyle}>重命名场景</strong>：鼠标悬停到场景上，点 ✏️ 按钮；或右键场景选「编辑名称」，修改后按 Enter 确认、Esc 取消</li>
-                  <li><strong style={labelStyle}>删除场景</strong>：鼠标悬停点 🗑️；或右键选「删除场景」</li>
-                  <li><strong style={labelStyle}>进入场景详情</strong>：直接点击场景名称即可</li>
+                  <li><strong style={labelStyle}>新建场景</strong>：点顶部工具栏「+ 新建场景」按钮，输入名称后创建</li>
+                  <li><strong style={labelStyle}>重命名场景</strong>：右键场景选「编辑名称」或点卡片上的 ✏️，修改后按 Enter 确认、Esc 取消</li>
+                  <li><strong style={labelStyle}>删除场景</strong>：点场景卡片上的 🗑️；或右键选「删除场景」</li>
+                  <li><strong style={labelStyle}>进入场景详情</strong>：点场景卡片上的「✏️ 编辑」按钮</li>
+                  <li><strong style={labelStyle}>切换视图</strong>：点顶部工具栏的视图切换按钮，可在网格和列表两种显示方式间切换</li>
                   <li><strong style={labelStyle}>场景数量限制</strong>：免费版最多 1 个场景，激活版不限</li>
                 </ul>
               </SectionCard>
@@ -211,7 +212,7 @@ export default function HelpModal({ onClose }: HelpModalProps) {
 
               {/* 右键菜单 */}
               <SectionCard icon="🖱️" title="右键菜单">
-                <p style={{ margin: '0 0 8px', color: '#9ca3af', fontSize: '13px' }}>在左侧场景列表或主窗口的场景卡片上，右键点击均可执行以下操作：</p>
+                <p style={{ margin: '0 0 8px', color: '#9ca3af', fontSize: '13px' }}>在场景卡片上右键点击，可执行以下操作：</p>
                 <ul style={listStyle}>
                   <li><strong style={labelStyle}>编辑名称</strong>：进入编辑模式，修改后按 <kbd style={{ background: 'rgba(102,126,234,0.2)', padding: '1px 6px', borderRadius: '4px', fontSize: '12px' }}>Enter</kbd> 确认，按 <kbd style={{ background: 'rgba(102,126,234,0.2)', padding: '1px 6px', borderRadius: '4px', fontSize: '12px' }}>Esc</kbd> 取消</li>
                   <li><strong style={labelStyle}>设置快捷键</strong>：为场景绑定快捷键</li>
@@ -223,7 +224,7 @@ export default function HelpModal({ onClose }: HelpModalProps) {
               <SectionCard icon="💾" title="数据管理">
                 <ul style={listStyle}>
                   <li><strong style={labelStyle}>自动保存</strong>：所有操作自动保存，关闭软件不丢失数据</li>
-                  <li><strong style={labelStyle}>导出场景</strong>：点左侧底部「📤 导出」按钮，将所有场景保存为 JSON 文件</li>
+                  <li><strong style={labelStyle}>导出场景</strong>：点顶部工具栏的「📤 导出」按钮，将所有场景保存为 JSON 文件</li>
                   <li><strong style={labelStyle}>导入场景</strong>：点「📥 导入」按钮，从 JSON 文件恢复场景数据（重复场景会自动跳过）</li>
                 </ul>
               </SectionCard>
@@ -373,7 +374,7 @@ export default function HelpModal({ onClose }: HelpModalProps) {
                 style={{ background: 'rgba(102, 126, 234, 0.15)', border: '1px solid rgba(102, 126, 234, 0.3)' }}
               >
                 <div style={{ color: '#c7d2fe', lineHeight: '2' }}>
-                  <p style={{ marginBottom: '10px' }}><strong>步骤 1：</strong>点击左侧底部「🔑 授权管理」</p>
+                  <p style={{ marginBottom: '10px' }}><strong>步骤 1：</strong>点击顶部工具栏的「🔑」授权按钮</p>
                   <p style={{ marginBottom: '10px' }}><strong>步骤 2：</strong>复制您的机器码（点击即复制）</p>
                   <p style={{ marginBottom: '10px' }}><strong>步骤 3：</strong>联系客服，发送机器码获取授权码</p>
                   <p style={{ marginBottom: '14px' }}><strong>步骤 4：</strong>将授权码粘贴到输入框，点击「激活」</p>

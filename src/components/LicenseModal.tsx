@@ -143,10 +143,13 @@ export default function LicenseModal({ onClose }: LicenseModalProps) {
           borderRadius: '20px',
           width: '100%',
           maxWidth: '480px',
+          maxHeight: '90vh',
           margin: '16px',
           overflow: 'hidden',
           border: '1px solid rgba(102, 126, 234, 0.3)',
           boxShadow: '0 25px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(102, 126, 234, 0.15)',
+          display: 'flex',
+          flexDirection: 'column',
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -157,6 +160,7 @@ export default function LicenseModal({ onClose }: LicenseModalProps) {
           justifyContent: 'space-between',
           padding: '14px 24px',
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          flexShrink: 0,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <span style={{ fontSize: '24px' }}>🔐</span>
@@ -184,7 +188,7 @@ export default function LicenseModal({ onClose }: LicenseModalProps) {
         </div>
 
         {/* 内容 */}
-        <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px', flex: 1, overflowY: 'auto', minHeight: 0 }}>
           {/* 当前状态卡片 */}
           <div style={{
             background: 'rgba(22, 33, 62, 0.6)',
@@ -445,6 +449,7 @@ export default function LicenseModal({ onClose }: LicenseModalProps) {
           padding: '12px 24px',
           background: 'rgba(102, 126, 234, 0.1)',
           borderTop: '1px solid rgba(102, 126, 234, 0.3)',
+          flexShrink: 0,
         }}>
           <p style={{ 
             fontSize: '12px', 

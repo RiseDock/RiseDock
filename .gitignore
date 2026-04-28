@@ -20,3 +20,6 @@ Thumbs.db
 *.exe
 *.msi
 build.log
+
+# Updater signing keys (NEVER commit private key!)
+.tauri-updater-key

@@ -46,17 +46,17 @@ pub async fn check_process_running(pid: u32) -> Result<ProcessStatus, String> {
 
 #[tauri::command]
 pub async fn launch_item(
-    itemPath: String,
-    itemType: String,
-    itemName: String,
+    item_path: String,
+    item_type: String,
+    item_name: String,
 ) -> Result<LaunchResult, String> {
-    if itemPath.trim().is_empty() {
+    if item_path.trim().is_empty() {
         return Err("路径不能为空".to_string());
     }
 
-    let path = itemPath.trim();
+    let path = item_path.trim();
     
-    match itemType.as_str() {
+    match item_type.as_str() {
         "folder" => {
             // 文件夹类型 - 使用 explorer 打开
             match Command::new("explorer")
@@ -65,7 +65,7 @@ pub async fn launch_item(
             {
                 Ok(_) => Ok(LaunchResult {
                     item_id: String::new(),
-                    name: itemName,
+                    name: item_name,
                     success: true,
                     message: "已打开".to_string(),
                     pid: None,
@@ -88,7 +88,7 @@ pub async fn launch_item(
             {
                 Ok(_) => Ok(LaunchResult {
                     item_id: String::new(),
-                    name: itemName,
+                    name: item_name,
                     success: true,
                     message: "已打开".to_string(),
                     pid: None, // URL 类型不跟踪进程
@@ -105,7 +105,7 @@ pub async fn launch_item(
                     let pid = child.id();
                     Ok(LaunchResult {
                         item_id: String::new(),
-                        name: itemName,
+                        name: item_name,
                         success: true,
                         message: "已启动".to_string(),
                         pid: Some(pid),
@@ -119,7 +119,7 @@ pub async fn launch_item(
                     {
                         Ok(_) => Ok(LaunchResult {
                             item_id: String::new(),
-                            name: itemName,
+                            name: item_name,
                             success: true,
                             message: "已启动".to_string(),
                             pid: None, // cmd start 无法获取真实 PID

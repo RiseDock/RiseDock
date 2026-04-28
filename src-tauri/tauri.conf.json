@@ -15,8 +15,8 @@
         "title": "启程典",
         "width": 1200,
         "height": 800,
-        "minWidth": 800,
-        "minHeight": 600,
+        "minWidth": 1100,
+        "minHeight": 640,
         "resizable": true,
         "fullscreen": false,
         "center": true,
@@ -58,6 +58,12 @@
   "plugins": {
     "shell": {
       "open": true
+    },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDFGQzhFODU0NUIwQjIyMjgKUldRb0lndGJWT2pJSDZHQXlzRmo0U0VPd2xOZ1Q2MUVacnBQUWlXa0NDdkIwdkVibDhJNElIRlkK",
+      "endpoints": [
+        "https://github.com/RiseDock/RiseDock/releases/latest/download/latest.json"
+      ]
     }
   }
 }

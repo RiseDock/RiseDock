@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Scene, LaunchItem, LicenseStatus } from '../types';
 import { v4 as uuidv4 } from 'uuid';
-import { initDb, loadScenesFromDb, saveScenesToDb, loadLicenseFromDb, saveLicenseToDb } from '../services/database';
+import { initDb, loadScenesFromDb, saveScenesToDb } from '../services/database';
 
 interface SceneStore {
   scenes: Scene[];
@@ -206,48 +206,31 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
     get().saveToStorage();
   },
 
-  // 使用 SQLite 数据库加载数据
+  // 使用 SQLite 数据库加载数据（rusqlite 后端）
   loadFromStorage: async () => {
     set({ isLoading: true });
     try {
-      // 初始化数据库
+      // 初始化数据库（Rust 端 setup 已自动调用，这里确保表就绪）
       await initDb();
       
       // 从数据库加载场景
       const scenes = await loadScenesFromDb();
-      console.log(`[loadFromStorage] 从 SQLite 加载 ${scenes.length} 个场景`);
-      
-      // 确保所有启动项都有 enabled 和 pinned 字段
-      const processedScenes = scenes.map((scene: Scene) => ({
-        ...scene,
-        items: (scene.items || []).map((item: LaunchItem) => ({
-          ...item,
-          enabled: item.enabled !== undefined ? item.enabled : true,
-          pinned: item.pinned || false,
-        })),
-      }));
+      console.log(`[loadFromStorage] 从 rusqlite 加载 ${scenes.length} 个场景`);
       
       // 默认显示空页面，不自动选中第一个场景
-      set({ scenes: processedScenes, selectedSceneId: null, isLoading: false });
-      // SQLite 加载成功后清理 localStorage 残留
+      set({ scenes, selectedSceneId: null, isLoading: false });
+      // 加载成功后清理 localStorage 残留
       localStorage.removeItem('qicheng-dian-scenes');
     } catch (err) {
       console.error('[loadFromStorage] 加载失败:', err);
       
-      // 如果数据库加载失败，尝试从 localStorage 加载
+      // 如果数据库加载失败，尝试从 localStorage 加载（兜底）
       const saved = localStorage.getItem('qicheng-dian-scenes');
       if (saved) {
         try {
           const scenes = JSON.parse(saved);
-          console.log(`[loadFromStorage] 从 localStorage 加载 ${scenes.length} 个场景`);
-          const processedScenes = scenes.map((scene: Scene) => ({
-            ...scene,
-            items: (scene.items || []).map((item: LaunchItem) => ({
-              ...item,
-              enabled: item.enabled !== undefined ? item.enabled : true,
-            })),
-          }));
-          set({ scenes: processedScenes, selectedSceneId: null, isLoading: false });
+          console.log(`[loadFromStorage] 从 localStorage 兜底加载 ${scenes.length} 个场景`);
+          set({ scenes, selectedSceneId: null, isLoading: false });
         } catch {
           console.error('[loadFromStorage] 从 localStorage 加载也失败');
           set({ scenes: [], selectedSceneId: null, isLoading: false });
@@ -258,14 +241,14 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
     }
   },
 
-  // 使用 SQLite 数据库保存数据
+  // 使用 SQLite 数据库保存数据（rusqlite 后端，带事务保护）
   saveToStorage: async () => {
     try {
       const { scenes } = get();
       console.log(`[saveToStorage] 保存 ${scenes.length} 个场景, ${scenes.reduce((sum, s) => sum + (s.items?.length || 0), 0)} 个启动项`);
       await saveScenesToDb(scenes);
       console.log('[saveToStorage] 保存成功');
-      // SQLite 保存成功后清理 localStorage 残留
+      // 保存成功后清理 localStorage 残留
       localStorage.removeItem('qicheng-dian-scenes');
     } catch (err) {
       console.error('[saveToStorage] 保存失败:', err);
@@ -359,13 +342,8 @@ export const useLicenseStore = create<LicenseStore>((set, get) => ({
 
   setStatus: async (status) => {
     set({ status });
-    // 同时保存到数据库
-    try {
-      await saveLicenseToDb(status);
-    } catch (e) {
-      console.error('保存授权状态失败:', e);
-    }
-    // 同时保存到 localStorage
+    // 授权数据现在走 license.dat 文件（Rust 端 license.rs 处理），不再写数据库
+    // 同时保存到 localStorage 作为兜底
     localStorage.setItem('qicheng-dian-license', JSON.stringify({
       status,
       machineCode: get().machineCode,
@@ -388,17 +366,14 @@ export const useLicenseStore = create<LicenseStore>((set, get) => ({
 
   loadFromStorage: async () => {
     try {
-      // 先尝试从数据库加载
-      const dbLicense = await loadLicenseFromDb();
-      if (dbLicense) {
-        set({ status: dbLicense });
-        return;
-      }
+      // 授权数据现在走 license.dat 文件（Rust 端 license.rs 的 get_license_status 命令）
+      // 前端 LicenseStore 不再从数据库读取授权
+      // 授权加载由组件直接调用 Rust 端命令处理
     } catch (e) {
-      console.error('从数据库加载授权失败:', e);
+      console.error('加载授权失败:', e);
     }
     
-    // 备用：从 localStorage 加载
+    // 兜底：从 localStorage 加载
     const saved = localStorage.getItem('qicheng-dian-license');
     if (saved) {
       try {

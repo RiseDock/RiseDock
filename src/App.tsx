@@ -1,17 +1,17 @@
 import { useEffect, useState, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { useSceneStore, useLicenseStore } from './stores';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { register, unregister, unregisterAll } from '@tauri-apps/plugin-global-shortcut';
-import Sidebar from './components/Sidebar';
+import SceneDashboard from './components/SceneDashboard';
 import SceneEditor from './components/SceneEditor';
-import EmptyState from './components/EmptyState';
 import LicenseModal from './components/LicenseModal';
 import HelpModal from './components/HelpModal';
 import HotkeyModal from './components/HotkeyModal';
 import ToastContainer from './components/Toast';
+import SettingsModal from './components/SettingsModal';
 import SearchModal from './components/SearchModal';
+import UpdateModal from './components/UpdateModal';
 import { Scene } from './types';
 
 function App() {
@@ -19,6 +19,8 @@ function App() {
   const { loadFromStorage: loadLicense, setStatus } = useLicenseStore();
   const [showLicenseModal, setShowLicenseModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [showCloseDialog, setShowCloseDialog] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [hotkeyScene, setHotkeyScene] = useState<Scene | null>(null);
@@ -29,77 +31,6 @@ function App() {
   const pendingRegisterRef = useRef(false);
   // 标记是否正在打开快捷键设置弹窗（此时不应触发场景启动）
   const hotkeyModalOpenRef = useRef(false);
-
-  // 场景右键菜单（通过 Portal 渲染到 body）
-  const [sceneContextMenu, setSceneContextMenu] = useState<{
-    x: number;
-    y: number;
-    scene: Scene;
-    onEdit: () => void;
-    onDelete: () => void;
-    onSetHotkey: () => void;
-  } | null>(null);
-
-  // 场景右键菜单回调
-  const handleSceneContextMenu = (
-    scene: Scene,
-    x: number,
-    y: number,
-    callbacks: { onEdit: () => void; onDelete: () => void; onSetHotkey: () => void }
-  ) => {
-    setSceneContextMenu({ x, y, scene, ...callbacks });
-  };
-
-  // 场景右键菜单自动关闭：用矩形区域检测而非 element.contains
-  useEffect(() => {
-    if (!sceneContextMenu) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const menu = document.querySelector('[data-scene-context-menu="true"]');
-      const currentSceneRow = document.querySelector(`[data-scene-row="${sceneContextMenu.scene.id}"]`);
-      
-      // 获取鼠标位置
-      const mouseX = e.clientX;
-      const mouseY = e.clientY;
-      
-      // 检查鼠标是否在菜单矩形内
-      if (menu) {
-        const menuRect = menu.getBoundingClientRect();
-        if (mouseX >= menuRect.left && mouseX <= menuRect.right && mouseY >= menuRect.top && mouseY <= menuRect.bottom) {
-          return; // 鼠标在菜单内，保持打开
-        }
-      }
-      
-      // 检查鼠标是否在当前场景行矩形内
-      if (currentSceneRow) {
-        const rowRect = currentSceneRow.getBoundingClientRect();
-        if (mouseX >= rowRect.left && mouseX <= rowRect.right && mouseY >= rowRect.top && mouseY <= rowRect.bottom) {
-          return; // 鼠标在当前场景行内，保持打开
-        }
-      }
-      
-      // 鼠标在其他区域，关闭菜单
-      setSceneContextMenu(null);
-    };
-
-    const handleMouseDown = (e: MouseEvent) => {
-      const menu = document.querySelector('[data-scene-context-menu="true"]');
-      if (menu) {
-        const rect = menu.getBoundingClientRect();
-        if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
-          return; // 点击在菜单内
-        }
-      }
-      setSceneContextMenu(null);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mousedown', handleMouseDown);
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mousedown', handleMouseDown);
-    };
-  }, [sceneContextMenu]);
 
   useEffect(() => {
     const init = async () => {
@@ -120,6 +51,19 @@ function App() {
         
         // 再加载场景数据
         await loadFromStorage();
+
+        // 启动后静默检查更新（3秒后，避免和初始化抢资源）
+        setTimeout(async () => {
+          try {
+            const { check } = await import('@tauri-apps/plugin-updater');
+            const update = await check();
+            if (update) {
+              setShowUpdateModal(true);
+            }
+          } catch (e) {
+            console.log('静默检查更新失败（不影响使用）:', e);
+          }
+        }, 3000);
       } catch (err) {
         console.error('初始化失败:', err);
       }
@@ -413,82 +357,23 @@ function App() {
         </div>
       </div>
 
-      {/* 侧边栏 */}
-      <Sidebar
-        onOpenLicense={() => setShowLicenseModal(true)}
-        onOpenHelp={() => setShowHelpModal(true)}
-        onSetHotkey={(scene) => setHotkeyScene(scene)}
-        onSceneContextMenu={handleSceneContextMenu}
-        onCloseSceneContextMenu={() => setSceneContextMenu(null)}
-      />
-
-      {/* 场景右键菜单（直接渲染，不用 Portal） */}
-      {sceneContextMenu && (() => {
-        const MENU_HEIGHT = 160;
-        const MENU_WIDTH = 160;
-        // 与 ContextMenu.tsx 完全一致的定位逻辑：确保菜单不超出底部和右侧边界
-        const finalX = Math.max(10, Math.min(sceneContextMenu.x, window.innerWidth - MENU_WIDTH - 10));
-        const finalY = Math.max(10, Math.min(sceneContextMenu.y, window.innerHeight - MENU_HEIGHT - 10));
-        return (
-          <div
-            data-scene-context-menu="true"
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              position: 'fixed',
-              left: finalX,
-              top: finalY,
-              background: 'linear-gradient(145deg, #1a1a2e 0%, #16213e 100%)',
-              borderRadius: '12px',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(102, 126, 234, 0.2)',
-              padding: '8px 0',
-              minWidth: '160px',
-              zIndex: 99999999,
-              backdropFilter: 'blur(12px)',
-            }}
-          >
-            <div
-              onClick={() => { sceneContextMenu.onEdit(); setSceneContextMenu(null); }}
-              style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', cursor: 'pointer', fontSize: '14px', color: '#e2e8f0', borderRadius: '8px', margin: '0 6px', transition: 'all 0.15s' }}
-              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(102, 126, 234, 0.2)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-            >
-              <span style={{ fontSize: '16px' }}>✏️</span>
-              <span>编辑名称</span>
-            </div>
-            <div
-              onClick={() => { sceneContextMenu.onSetHotkey(); setSceneContextMenu(null); }}
-              style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', cursor: 'pointer', fontSize: '14px', color: '#e2e8f0', borderRadius: '8px', margin: '0 6px', transition: 'all 0.15s' }}
-              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(102, 126, 234, 0.2)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-            >
-              <span style={{ fontSize: '16px' }}>⌨️</span>
-              <span>设置快捷键</span>
-            </div>
-            <div style={{ height: '1px', background: 'rgba(255, 255, 255, 0.08)', margin: '4px 12px' }} />
-            <div
-              onClick={() => { sceneContextMenu.onDelete(); setSceneContextMenu(null); }}
-              style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', cursor: 'pointer', fontSize: '14px', color: '#ef4444', borderRadius: '8px', margin: '0 6px', transition: 'all 0.15s' }}
-              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.15)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-            >
-              <span style={{ fontSize: '16px' }}>🗑️</span>
-              <span>删除场景</span>
-            </div>
-          </div>
-        );
-      })()}
-
       {/* 主内容区 */}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto', background: 'linear-gradient(180deg, #0f0f1a 0%, #1a1a2e 100%)', paddingTop: '36px' }}>
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'linear-gradient(180deg, #0f0f1a 0%, #1a1a2e 100%)', paddingTop: '36px' }}>
         {selectedScene ? (
-          <SceneEditor 
-            scene={selectedScene} 
+          <SceneEditor
+            scene={selectedScene}
             onBack={handleBackToHome}
             highlightedItemId={highlightedItemId}
             onSetHotkey={(scene) => setHotkeyScene(scene)}
           />
         ) : (
-          <EmptyState onSetHotkey={(scene) => setHotkeyScene(scene)} />
+          <SceneDashboard
+            onOpenLicense={() => setShowLicenseModal(true)}
+            onOpenHelp={() => setShowHelpModal(true)}
+            onOpenSettings={() => setShowSettingsModal(true)}
+            onOpenUpdate={() => setShowUpdateModal(true)}
+            onSetHotkey={(scene) => setHotkeyScene(scene)}
+          />
         )}
       </main>
 
@@ -500,6 +385,16 @@ function App() {
       {/* 帮助弹窗 */}
       {showHelpModal && (
         <HelpModal onClose={() => setShowHelpModal(false)} />
+      )}
+
+      {/* 设置弹窗 */}
+      {showSettingsModal && (
+        <SettingsModal onClose={() => setShowSettingsModal(false)} />
+      )}
+
+      {/* 更新弹窗 */}
+      {showUpdateModal && (
+        <UpdateModal onClose={() => setShowUpdateModal(false)} />
       )}
 
       {/* 快捷键设置弹窗 */}

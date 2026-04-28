@@ -15,9 +15,15 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_sql::Builder::new().build())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
+            #[cfg(desktop)]
+            app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
             // 创建托盘菜单
             let show_item = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "退出程序", true, None::<&str>)?;
@@ -56,6 +62,12 @@ pub fn run() {
                 })
                 .build(app)?;
 
+            // 启动时初始化数据库
+            let app_handle = app.handle().clone();
+            if let Err(e) = storage::init_database(app_handle) {
+                eprintln!("数据库初始化失败: {}", e);
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -68,15 +80,19 @@ pub fn run() {
             license::get_license_status,
             license::activate_license,
             license::clear_license,
-            // 数据存储
+            // 数据存储（rusqlite）
             storage::get_data_path,
             storage::get_db_path_cmd,
             storage::init_database,
-            storage::save_scenes,
             storage::load_scenes,
+            storage::save_scenes,
             storage::export_scenes,
             storage::import_scenes,
             storage::get_subdirectories,
+            // 设置
+            storage::save_setting,
+            storage::load_setting,
+            storage::delete_setting,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
