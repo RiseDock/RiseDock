@@ -23,3 +23,4 @@ build.log
 
 # Updater signing keys (NEVER commit private key!)
 .tauri-updater-key
+.tauri-updater-key2

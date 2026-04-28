@@ -60,7 +60,7 @@
       "open": true
     },
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDFGQzhFODU0NUIwQjIyMjgKUldRb0lndGJWT2pJSDZHQXlzRmo0U0VPd2xOZ1Q2MUVacnBQUWlXa0NDdkIwdkVibDhJNElIRlkK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM2MDlFNTZGNzQ0NERFOEUKUldTTzNrUjBiK1VKTm9neE54dm83dVp1NjdxV3RHbVFFdVl3QWtYNUhPUG82UEljU05ZQUMwYnEK",
       "endpoints": [
         "https://github.com/RiseDock/RiseDock/releases/latest/download/latest.json"
       ]
