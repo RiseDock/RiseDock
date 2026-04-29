@@ -195,7 +195,7 @@ jobs:
           $headers = @{ Authorization = "token ${{ secrets.GITEE_TOKEN }}" }
           $version = "${{ env.VERSION }}"
           try {
-            $existing = Invoke-RestMethod -Uri "https://gitee.com/api/v5/repos/${{ env.GITEE_REPO }}/releases/tags/app-$version" -Headers $headers
+            $existing = Invoke-RestMethod -Uri "https://gitee.com/api/v5/repos/${{ env.GITEE_REPO }}/releases/tags/$version" -Headers $headers
             if ($existing.id) {
               Write-Host "Deleting old release: $($existing.id)"
               Invoke-RestMethod -Uri "https://gitee.com/api/v5/repos/${{ env.GITEE_REPO }}/releases/$($existing.id)" -Headers $headers -Method Delete
@@ -211,7 +211,8 @@ jobs:
             "Content-Type" = "application/json"
           }
           $body = @{
-            tag_name = "app-${{ env.VERSION }}"
+            tag_name = "${{ env.VERSION }}"
+            target_commitish = "main"
             name = "RiseDock ${{ env.VERSION }}"
             body = "**国内使用：https://${{ env.OSS_BUCKET }}.${{ env.OSS_ENDPOINT }}/app-${{ env.VERSION }}/latest.json**"
           } | ConvertTo-Json
@@ -227,6 +228,6 @@ jobs:
           Write-Host "========================================"
           Write-Host ""
           Write-Host "GitHub: https://github.com/${{ github.repository }}/releases/tag/${{ env.VERSION }}"
-          Write-Host "Gitee:  https://gitee.com/${{ env.GITEE_REPO }}/releases/tag/app-${{ env.VERSION }}"
+          Write-Host "Gitee:  https://gitee.com/${{ env.GITEE_REPO }}/releases/tag/${{ env.VERSION }}"
           Write-Host "OSS:    https://${{ env.OSS_BUCKET }}.${{ env.OSS_ENDPOINT }}/app-${{ env.VERSION }}/latest.json"
           Write-Host ""
