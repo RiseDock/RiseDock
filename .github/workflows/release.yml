@@ -66,9 +66,17 @@ jobs:
           name: risedock-build-${{ env.VERSION }}
           path: ./build
 
-      - name: Verify artifacts
+      - name: Find build artifacts
+        shell: pwsh
         run: |
-          Get-ChildItem -Path "./build"
+          # List all files in build directory to understand structure
+          Get-ChildItem -Path "./build" -Recurse -File | Select-Object FullName
+          $script:exe = Get-ChildItem -Path "./build" -Recurse -Filter "*.exe" | Where-Object { $_.Name -notlike "ossutil*" } | Select-Object -First 1
+          $script:sig = Get-ChildItem -Path "./build" -Recurse -Filter "*.sig" | Select-Object -First 1
+          $script:latestJson = Get-ChildItem -Path "./build" -Recurse -Filter "latest.json" | Select-Object -First 1
+          Write-Host "Found EXE: $($script:exe.FullName)"
+          Write-Host "Found SIG: $($script:sig.FullName)"
+          Write-Host "Found JSON: $($script:latestJson.FullName)"
 
       # ========== 上传到阿里云 OSS ==========
       - name: Setup ossutil
@@ -96,8 +104,8 @@ jobs:
         shell: pwsh
         run: |
           $ossutil = Get-ChildItem -Path "." -Recurse -Filter "ossutil*.exe" | Select-Object -First 1
-          $exe = Get-ChildItem -Path "./build" -Filter "*.exe" | Select-Object -First 1
-          $sig = Get-ChildItem -Path "./build" -Filter "*.sig" | Select-Object -First 1
+          $exe = Get-ChildItem -Path "./build" -Recurse -Filter "*.exe" | Where-Object { $_.Name -notlike "ossutil*" } | Select-Object -First 1
+          $sig = Get-ChildItem -Path "./build" -Recurse -Filter "*.sig" | Select-Object -First 1
           $ossDir = "app-${{ env.VERSION }}"
           Write-Host "Uploading to OSS..."
           & $ossutil.FullName cp $exe.FullName "oss://${{ env.OSS_BUCKET }}/${ossDir}/"
@@ -107,20 +115,26 @@ jobs:
       - name: Generate latest.json for OSS
         shell: pwsh
         run: |
-          $exe = Get-ChildItem -Path "./build" -Filter "*.exe" | Select-Object -First 1
+          $ossutil = Get-ChildItem -Path "." -Recurse -Filter "ossutil*.exe" | Select-Object -First 1
+          $exe = Get-ChildItem -Path "./build" -Recurse -Filter "*.exe" | Where-Object { $_.Name -notlike "ossutil*" } | Select-Object -First 1
+          $latestJson = Get-ChildItem -Path "./build" -Recurse -Filter "latest.json" | Select-Object -First 1
           $ossExeUrl = "https://${{ env.OSS_BUCKET }}.${{ env.OSS_ENDPOINT }}/app-${{ env.VERSION }}/$($exe.Name)"
-          $json = Get-Content "./build/latest.json" | ConvertFrom-Json
+          Write-Host "EXE: $($exe.FullName)"
+          Write-Host "Latest JSON: $($latestJson.FullName)"
+          $json = Get-Content $latestJson.FullName | ConvertFrom-Json
           $json.platforms.windows.url = $ossExeUrl
-          $json | ConvertTo-Json -Depth 10 | Set-Content "./build/latest_modified.json"
+          $modifiedJson = Join-Path $env:GITHUB_WORKSPACE "latest_modified.json"
+          $json | ConvertTo-Json -Depth 10 | Set-Content $modifiedJson
           Write-Host "Updated latest.json:"
-          Get-Content "./build/latest_modified.json"
+          Get-Content $modifiedJson
 
       - name: Upload latest.json to OSS
         shell: pwsh
         run: |
           $ossutil = Get-ChildItem -Path "." -Recurse -Filter "ossutil*.exe" | Select-Object -First 1
           $ossDir = "app-${{ env.VERSION }}"
-          & $ossutil.FullName cp "./build/latest_modified.json" "oss://${{ env.OSS_BUCKET }}/${ossDir}/latest.json"
+          $modifiedJson = Join-Path $env:GITHUB_WORKSPACE "latest_modified.json"
+          & $ossutil.FullName cp $modifiedJson "oss://${{ env.OSS_BUCKET }}/${ossDir}/latest.json"
           Write-Host ""
           Write-Host "=== OSS URL ==="
           Write-Host "https://${{ env.OSS_BUCKET }}.${{ env.OSS_ENDPOINT }}/${ossDir}/latest.json"
@@ -130,9 +144,9 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            ./build/*.exe
-            ./build/*.sig
-            ./build/latest_modified.json
+            ./build/**/*.exe
+            ./build/**/*.sig
+            ${{ github.workspace }}/latest_modified.json
           draft: false
           prerelease: false
           generate_release_notes: true
@@ -169,17 +183,6 @@ jobs:
           $result = Invoke-RestMethod -Uri "https://gitee.com/api/v5/repos/${{ env.GITEE_REPO }}/releases" -Headers $headers -Method Post -Body $body
           Write-Host "Created release ID: $($result.id)"
           Write-Host "RELEASE_ID=$($result.id)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-
-      - name: Upload signature to Gitee
-        shell: pwsh
-        run: |
-          $sig = Get-ChildItem -Path "./build" -Filter "*.sig" | Select-Object -First 1
-          $headers = @{ Authorization = "token ${{ secrets.GITEE_TOKEN }}" }
-          $form = @{
-            file = Get-Item $sig.FullName
-            name = $sig.Name
-          }
-          Invoke-RestMethod -Uri "https://gitee.com/api/v5/repos/${{ env.GITEE_REPO }}/releases/${{ steps.gitee.outputs.RELEASE_ID }}/attach_files" -Headers $headers -Method Post -Form $form
 
       - name: Summary
         run: |
