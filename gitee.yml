@@ -1,0 +1,100 @@
+name: 构建与发布
+
+on:
+  - tag
+
+variables:
+  VERSION: ${git.ref#refs/tags/v}
+
+stages:
+  - build
+  - publish
+
+build:
+  stage: build
+  image: ubuntu:22.04
+  before_script:
+    - apt-get update && apt-get install -y curl git
+    - curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+    - apt-get install -y nodejs
+    - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+  script:
+    - export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
+    - source "$HOME/.cargo/env"
+    - node -v
+    - rustc --version
+    - cargo --version
+    - npm install
+    - npm run tauri build
+    - echo "=== 构建产物 ==="
+    - ls -la src-tauri/target/release/bundle/nsis/
+  artifacts:
+    paths:
+      - src-tauri/target/release/bundle/nsis/*.exe
+      - src-tauri/target/release/bundle/nsis/*.sig
+      - src-tauri/target/release/bundle/nsis/latest.json
+    expire_in: 1 day
+  only:
+    - tags
+
+publish:
+  stage: publish
+  dependencies:
+    - build
+  script:
+    - |
+      set -e
+
+      echo "=== 发布版本 v${VERSION} 到 Gitee ==="
+
+      EXE=$(find src-tauri/target/release/bundle/nsis -name "*.exe" | head -1)
+      SIG=$(find src-tauri/target/release/bundle/nsis -name "*.sig" | head -1)
+      JSON=$(find src-tauri/target/release/bundle/nsis -name "latest.json" | head -1)
+
+      echo "安装包: $EXE"
+      echo "签名: $SIG"
+      echo "latest.json: $JSON"
+
+      echo "检查旧 Release..."
+      EXISTING_ID=$(curl -s -u "$RISEDOCK_TOKEN" \
+        "https://gitee.com/api/v5/repos/${GITEE_REPO}/releases/tags/app-v${VERSION}" \
+        | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2 || true)
+
+      if [ -n "$EXISTING_ID" ] && [ "$EXISTING_ID" != "null" ]; then
+        echo "删除旧 Release ID: $EXISTING_ID"
+        curl -s -u "$RISEDOCK_TOKEN" -X DELETE \
+          "https://gitee.com/api/v5/repos/${GITEE_REPO}/releases/$EXISTING_ID"
+      fi
+
+      echo "创建 Release..."
+      RELEASE_ID=$(curl -s -u "$RISEDOCK_TOKEN" -X POST \
+        -H "Content-Type: application/json" \
+        -d "{\"tag_name\":\"app-v${VERSION}\",\"name\":\"RiseDock v${VERSION}\",\"body\":\"**更新内容：**\n- 优化用户体验\\n- 修复已知问题\\n- 提升稳定性\\n\\n点击下载安装新版本。\"}" \
+        "https://gitee.com/api/v5/repos/${GITEE_REPO}/releases" \
+        | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)
+
+      echo "Release ID: $RELEASE_ID"
+
+      echo "上传安装包..."
+      curl -s -u "$RISEDOCK_TOKEN" -X POST \
+        -F "file=@${EXE}" \
+        -F "name=RiseDock_${VERSION}_x64-setup.exe" \
+        "https://gitee.com/api/v5/repos/${GITEE_REPO}/releases/${RELEASE_ID}/attach_files"
+
+      echo "上传签名..."
+      curl -s -u "$RISEDOCK_TOKEN" -X POST \
+        -F "file=@${SIG}" \
+        -F "name=RiseDock_${VERSION}_x64-setup.exe.sig" \
+        "https://gitee.com/api/v5/repos/${GITEE_REPO}/releases/${RELEASE_ID}/attach_files"
+
+      echo "上传 latest.json..."
+      curl -s -u "$RISEDOCK_TOKEN" -X POST \
+        -F "file=@${JSON}" \
+        -F "name=latest.json" \
+        "https://gitee.com/api/v5/repos/${GITEE_REPO}/releases/${RELEASE_ID}/attach_files"
+
+      echo "=== 发布完成 ==="
+  variables:
+    GITEE_REPO: rise-dock/RiseDock
+  only:
+    - tags
