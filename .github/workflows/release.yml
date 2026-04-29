@@ -84,6 +84,22 @@ jobs:
           } | ConvertTo-Json | Set-Content "$env:GITHUB_WORKSPACE/artifacts.json"
           Write-Host "Artifact paths saved to artifacts.json"
 
+      - name: Move artifacts to root
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Path "./build" -Recurse -Filter "*.exe" | Where-Object { $_.Name -notlike "ossutil*" } | Select-Object -First 1
+          $sig = Get-ChildItem -Path "./build" -Recurse -Filter "*.sig" | Select-Object -First 1
+          if ($exe) {
+            Copy-Item $exe.FullName "./" -Force
+            Write-Host "Copied: $($exe.Name)"
+          }
+          if ($sig) {
+            Copy-Item $sig.FullName "./" -Force
+            Write-Host "Copied: $($sig.Name)"
+          }
+          Get-ChildItem -Path "./" -Filter "*.exe"
+          Get-ChildItem -Path "./" -Filter "*.sig"
+
       # ========== 上传到阿里云 OSS ==========
       - name: Setup ossutil
         shell: pwsh
@@ -179,8 +195,8 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            ./build/nsis/*.exe
-            ./build/nsis/*.sig
+            ./*.exe
+            ./*.sig
             ${{ github.workspace }}/latest_modified.json
           draft: false
           prerelease: false
