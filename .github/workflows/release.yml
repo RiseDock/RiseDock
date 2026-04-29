@@ -179,8 +179,8 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            C:/RiseDock_${{ env.VERSION }}_x64-setup.exe
-            C:/RiseDock_${{ env.VERSION }}_x64-setup.exe.sig
+            ./build/nsis/*.exe
+            ./build/nsis/*.sig
             ${{ github.workspace }}/latest_modified.json
           draft: false
           prerelease: false
