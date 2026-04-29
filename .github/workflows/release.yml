@@ -77,6 +77,7 @@ jobs:
           $zipUrl = "https://github.com/aliyun/ossutil/releases/download/v1.7.18/ossutil-v1.7.18-windows-amd64.zip"
           Invoke-WebRequest -Uri $zipUrl -OutFile "ossutil.zip"
           Expand-Archive -Path "ossutil.zip" -DestinationPath "." -Force
+          Get-ChildItem -Path "." -Filter "ossutil*"
           Remove-Item "ossutil.zip"
 
       - name: Config ossutil
@@ -85,19 +86,22 @@ jobs:
           OSS_ACCESS_KEY_ID: ${{ secrets.OSS_ACCESS_KEY_ID }}
           OSS_ACCESS_KEY_SECRET: ${{ secrets.OSS_ACCESS_KEY_SECRET }}
         run: |
+          $ossutil = Get-ChildItem -Path "." -Recurse -Filter "ossutil*.exe" | Select-Object -First 1
           $env:OSS_ACCESS_KEY_ID = "${{ secrets.OSS_ACCESS_KEY_ID }}"
           $env:OSS_ACCESS_KEY_SECRET = "${{ secrets.OSS_ACCESS_KEY_SECRET }}"
-          .\ossutil.exe config -i $env:OSS_ACCESS_KEY_ID -k $env:OSS_ACCESS_KEY_SECRET -e ${{ env.OSS_ENDPOINT }}
+          Write-Host "Found ossutil: $($ossutil.FullName)"
+          .\$($ossutil.Name) config -i $env:OSS_ACCESS_KEY_ID -k $env:OSS_ACCESS_KEY_SECRET -e ${{ env.OSS_ENDPOINT }}
 
       - name: Upload to OSS
         shell: pwsh
         run: |
+          $ossutil = Get-ChildItem -Path "." -Recurse -Filter "ossutil*.exe" | Select-Object -First 1
           $exe = Get-ChildItem -Path "./build" -Filter "*.exe" | Select-Object -First 1
           $sig = Get-ChildItem -Path "./build" -Filter "*.sig" | Select-Object -First 1
           $ossDir = "app-${{ env.VERSION }}"
           Write-Host "Uploading to OSS..."
-          .\ossutil.exe cp $exe.FullName "oss://${{ env.OSS_BUCKET }}/${ossDir}/"
-          .\ossutil.exe cp $sig.FullName "oss://${{ env.OSS_BUCKET }}/${ossDir}/"
+          .\$($ossutil.Name) cp $exe.FullName "oss://${{ env.OSS_BUCKET }}/${ossDir}/"
+          .\$($ossutil.Name) cp $sig.FullName "oss://${{ env.OSS_BUCKET }}/${ossDir}/"
           Write-Host "OSS upload complete!"
 
       - name: Generate latest.json for OSS
@@ -114,8 +118,9 @@ jobs:
       - name: Upload latest.json to OSS
         shell: pwsh
         run: |
+          $ossutil = Get-ChildItem -Path "." -Recurse -Filter "ossutil*.exe" | Select-Object -First 1
           $ossDir = "app-${{ env.VERSION }}"
-          .\ossutil.exe cp "./build/latest_modified.json" "oss://${{ env.OSS_BUCKET }}/${ossDir}/latest.json"
+          .\$($ossutil.Name) cp "./build/latest_modified.json" "oss://${{ env.OSS_BUCKET }}/${ossDir}/latest.json"
           Write-Host ""
           Write-Host "=== OSS URL ==="
           Write-Host "https://${{ env.OSS_BUCKET }}.${{ env.OSS_ENDPOINT }}/${ossDir}/latest.json"
