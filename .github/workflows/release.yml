@@ -22,26 +22,40 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
 
-      - name: Install Rust
-        run: rustup default stable && rustup update
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
 
-      - name: Install dependencies (Ubuntu)
+      - name: Install Linux dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libclang-dev \
+            clang
 
       - name: Install npm dependencies
         run: npm ci
 
       - name: Build Tauri app
-        run: npm run tauri build
+        uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'RiseDock v__VERSION__'
+          releaseBody: '自动发布的 Release'
+          releaseDraft: false
+          prerelease: false
+          args: --bundles nsis
 
       - name: Verify build artifacts
         run: |
@@ -92,69 +106,35 @@ jobs:
         run: |
           EXE=$(ls ./build/*.exe | head -1)
           SIG=$(ls ./build/*.sig | head -1)
-          EXE_NAME=$(basename $EXE)
-          SIG_NAME=$(basename $SIG)
           OSS_DIR="app-${{ env.VERSION }}"
           
           echo "Uploading to OSS..."
-          echo "  EXE: $EXE_NAME"
-          echo "  SIG: $SIG_NAME"
-          echo "  Dir: $OSS_DIR"
-          
           ./ossutil cp ./build/*.exe oss://${{ env.OSS_BUCKET }}/${OSS_DIR}/ --object-type=file
           ./ossutil cp ./build/*.sig oss://${{ env.OSS_BUCKET }}/${OSS_DIR}/ --object-type=file
-          
           echo "OSS upload complete!"
 
       - name: Generate latest.json for OSS
         run: |
-          # Read original latest.json
-          ORIGINAL_JSON=$(cat ./build/latest.json)
-          echo "Original latest.json:"
-          echo "$ORIGINAL_JSON"
-          
-          # Extract filename from the uploaded exe
           EXE_NAME=$(basename $(ls ./build/*.exe | head -1))
-          OSS_EXE_URL="https://${{ env.OSS_BUCKET }}.${{ env.OSS_ENDPOINT }}/${OSS_DIR}/${EXE_NAME}"
+          OSS_EXE_URL="https://${{ env.OSS_BUCKET }}.${{ env.OSS_ENDPOINT }}/app-${{ env.VERSION }}/${EXE_NAME}"
           
-          echo "New OSS URL: $OSS_EXE_URL"
-          
-          # Use Python to modify JSON
-          python3 << 'EOF'
+          python3 << EOF
           import json
-          import sys
-          import os
-          import re
-          
           with open('./build/latest.json', 'r') as f:
               data = json.load(f)
-          
-          # Update the Windows download URL to point to OSS
-          if 'platforms' in data and 'windows' in data['platforms']:
-              exe_name = os.environ.get('EXE_NAME', 'RiseDock.exe')
-              oss_url = os.environ.get('OSS_EXE_URL', '')
-              
-              # Replace the URL in the data
-              data['platforms']['windows']['url'] = oss_url
-              
-              print("Updated latest.json:")
-              print(json.dumps(data, indent=2, ensure_ascii=False))
-              
-              with open('./build/latest_modified.json', 'w') as f:
-                  json.dump(data, f, indent=2, ensure_ascii=False)
+          data['platforms']['windows']['url'] = '$OSS_EXE_URL'
+          with open('./build/latest_modified.json', 'w') as f:
+              json.dump(data, f, indent=2, ensure_ascii=False)
+          print("Updated latest.json:")
+          print(json.dumps(data, indent=2, ensure_ascii=False))
           EOF
-        env:
-          OSS_DIR: app-${{ env.VERSION }}
 
       - name: Upload latest.json to OSS
         run: |
           OSS_DIR="app-${{ env.VERSION }}"
           ./ossutil cp ./build/latest_modified.json oss://${{ env.OSS_BUCKET }}/${OSS_DIR}/latest.json --object-type=file
-          echo "OSS latest.json uploaded!"
-          
-          # Show the final URL
           echo ""
-          echo "=== OSS Download URL ==="
+          echo "=== OSS URL ==="
           echo "https://${{ env.OSS_BUCKET }}.${{ env.OSS_ENDPOINT }}/${OSS_DIR}/latest.json"
 
       # ========== 发布到 GitHub Release ==========
@@ -172,67 +152,55 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # ========== 发布到 Gitee Release ==========
-      - name: Get GitHub Release info
+      - name: Get release info
         id: release
         run: |
-          # Get the tag name without 'v' prefix
           TAG_NAME="${GITHUB_REF#refs/tags/}"
           echo "TAG_NAME=$TAG_NAME" >> $GITHUB_OUTPUT
-          
-          # Get download URL from the release
-          EXE_NAME=$(basename $(ls ./build/*.exe | head -1))
-          OSS_LATEST_URL="https://${{ env.OSS_BUCKET }}.${{ env.OSS_ENDPOINT }}/app-${TAG_NAME}/latest.json"
-          echo "OSS_LATEST_URL=$OSS_LATEST_URL" >> $GITHUB_OUTPUT
-          echo "EXE_NAME=$EXE_NAME" >> $GITHUB_OUTPUT
 
       - name: Delete old Gitee release
         run: |
-          echo "Checking for existing Gitee release..."
           EXISTING_ID=$(curl -s -u "${{ secrets.GITEE_TOKEN }}" \
             "https://gitee.com/api/v5/repos/${{ env.GITEE_REPO }}/releases/tags/app-${{ steps.release.outputs.TAG_NAME }}" \
             | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2 || true)
           
           if [ -n "$EXISTING_ID" ] && [ "$EXISTING_ID" != "null" ]; then
-            echo "Deleting old release ID: $EXISTING_ID"
+            echo "Deleting old release: $EXISTING_ID"
             curl -s -u "${{ secrets.GITEE_TOKEN }}" -X DELETE \
               "https://gitee.com/api/v5/repos/${{ env.GITEE_REPO }}/releases/$EXISTING_ID"
-            echo "Old release deleted"
-          else
-            echo "No existing release found"
           fi
 
       - name: Create Gitee Release
         id: gitee
         run: |
-          echo "Creating Gitee release..."
+          BODY="**\u56fd\u5185\u4f7f\u7528\uff1a https://${{ env.OSS_BUCKET }}.${{ env.OSS_ENDPOINT }}/app-${{ steps.release.outputs.TAG_NAME }}/latest.json**"
+          BODY+="\n\n---\n\n**\u66f4\u65b0\u5185\u5bb9\uff1a**\n- \u81ea\u52a8\u66f4\u65b0\u68c0\u67e5\n- \u4f18\u5316\u7528\u6237\u4f53\u9a8c\n- \u4fee\u590d\u5df2\u77e5\u95ee\u9898"
+          
           RELEASE_ID=$(curl -s -u "${{ secrets.GITEE_TOKEN }}" -X POST \
             -H "Content-Type: application/json" \
-            -d "{\"tag_name\":\"app-${{ steps.release.outputs.TAG_NAME }}\",\"name\":\"RiseDock ${{ steps.release.outputs.TAG_NAME }}\",\"body\":\"**\u56fd\u5185\u4f7f\u7528\u56fa\u5b9a\u7248\u672c\uff1a https://${{ env.OSS_BUCKET }}.${{ env.OSS_ENDPOINT }}/app-${{ steps.release.outputs.TAG_NAME }}/latest.json**\n\n---\n\n**\u66f4\u65b0\u5185\u5bb9\uff1a**\n- \u81ea\u52a8\u66f4\u65b0\u68c0\u67e5\uff0c\u65b0\u7248\u672c\u53ef\u76f4\u63a5\u5728\u5e94\u7528\u5185\u70b9\u51fb\u5b89\u88c5\n- \u4f18\u5316\u7528\u6237\u4f53\u9a8c\n- \u4fee\u590d\u5df2\u77e5\u95ee\u9898\n\n---\n\n**Gitee \u4e0b\u8f7d\uff08\u5916\u7f51\u7528\u6237\uff09\uff1a** https://gitee.com/${{ env.GITEE_REPO }}/releases\"}" \
+            -d "{\"tag_name\":\"app-${{ steps.release.outputs.TAG_NAME }}\",\"name\":\"RiseDock ${{ steps.release.outputs.TAG_NAME }}\",\"body\":\"${BODY}\"}" \
             "https://gitee.com/api/v5/repos/${{ env.GITEE_REPO }}/releases" \
             | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)
           
           echo "Created release ID: $RELEASE_ID"
           echo "RELEASE_ID=$RELEASE_ID" >> $GITHUB_OUTPUT
 
-      - name: Upload assets to Gitee
+      - name: Upload signature to Gitee
         run: |
           SIG=$(ls ./build/*.sig | head -1)
-          SIG_NAME=$(basename $SIG)
-          
-          echo "Uploading signature to Gitee..."
           curl -s -u "${{ secrets.GITEE_TOKEN }}" -X POST \
             -F "file=@${SIG}" \
-            -F "name=${SIG_NAME}" \
+            -F "name=$(basename $SIG)" \
             "https://gitee.com/api/v5/repos/${{ env.GITEE_REPO }}/releases/${{ steps.gitee.outputs.RELEASE_ID }}/attach_files"
 
       - name: Summary
         run: |
           echo ""
           echo "========================================"
-          echo "       Release ${{ env.VERSION }} Complete!"
+          echo "  Release ${{ env.VERSION }} Complete!"
           echo "========================================"
           echo ""
-          echo "GitHub Release: https://github.com/${{ github.repository }}/releases/tag/${{ env.VERSION }}"
-          echo "Gitee Release:  https://gitee.com/${{ env.GITEE_REPO }}/releases/tag/app-${{ env.VERSION }}"
-          echo "OSS latest.json: https://${{ env.OSS_BUCKET }}.${{ env.OSS_ENDPOINT }}/app-${{ env.VERSION }}/latest.json"
+          echo "GitHub: https://github.com/${{ github.repository }}/releases/tag/${{ env.VERSION }}"
+          echo "Gitee:  https://gitee.com/${{ env.GITEE_REPO }}/releases/tag/app-${{ env.VERSION }}"
+          echo "OSS:    https://${{ env.OSS_BUCKET }}.${{ env.OSS_ENDPOINT }}/app-${{ env.VERSION }}/latest.json"
           echo ""
