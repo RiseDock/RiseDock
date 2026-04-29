@@ -30,20 +30,12 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install npm dependencies
-        run: npm ci
-
-      - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
+      - name: Build with Tauri CLI
+        run: |
+          npm install
+          npm run tauri build -- --bundles nsis
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-        with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'RiseDock v__VERSION__'
-          releaseBody: '自动发布的 Release'
-          releaseDraft: false
-          prerelease: false
 
       - name: Verify build artifacts
         run: |
