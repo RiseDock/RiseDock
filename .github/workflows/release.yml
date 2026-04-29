@@ -74,7 +74,7 @@ jobs:
       - name: Setup ossutil
         shell: pwsh
         run: |
-          $zipUrl = "https://github.com/aliyun/ossutil/releases/download/v1.7.19/ossutil-v1.7.19-windows-amd64.zip"
+          $zipUrl = "https://github.com/aliyun/ossutil/releases/download/v1.7.18/ossutil-v1.7.18-windows-amd64.zip"
           Invoke-WebRequest -Uri $zipUrl -OutFile "ossutil.zip"
           Expand-Archive -Path "ossutil.zip" -DestinationPath "." -Force
           Remove-Item "ossutil.zip"
