@@ -1,4 +1,5 @@
 name: 构建与发布
+disable-default-build: true
 
 on:
   - tag
