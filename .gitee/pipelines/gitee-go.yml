@@ -1,0 +1,86 @@
+version: '1.0'
+name: pipeline-20260429
+displayName: RiseDock 构建发布
+triggers:
+  trigger: auto
+  push:
+    branches:
+      prefix: []
+    tags:
+      prefix: []
+stages:
+  - name: stage-dfd77889
+    displayName: 构建与发布
+    strategy: naturally
+    trigger: auto
+    executor:
+      - type: freebsd
+        resources:
+          - cpu: 2000m
+            memory: 4096Mi
+    steps:
+      - name: step-1
+        displayName: 安装依赖
+        type: shell
+        command: |
+          apt-get update && apt-get install -y curl git build-essential
+          curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+          apt-get install -y nodejs
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+
+      - name: step-2
+        displayName: 构建 Tauri
+        type: shell
+        command: |
+          export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
+          source "$HOME/.cargo/env"
+          node -v
+          rustc --version
+          npm install
+          npm run tauri build
+          ls -la src-tauri/target/release/bundle/nsis/
+
+      - name: step-3
+        displayName: 发布 Release
+        type: shell
+        command: |
+          export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
+          source "$HOME/.cargo/env"
+          VERSION=${CI_COMMIT_TAG#refs/tags/v}
+          echo "发布版本: $VERSION"
+
+          # 删除旧 Release
+          curl -s -u "$RISEDOCK_TOKEN" -X DELETE \
+            "https://gitee.com/api/v5/repos/rise-dock/RiseDock/releases/tags/app-$VERSION" || true
+
+          # 创建新 Release
+          RELEASE_ID=$(curl -s -u "$RISEDOCK_TOKEN" -X POST \
+            -H "Content-Type: application/json" \
+            -d "{\"tag_name\":\"app-$VERSION\",\"name\":\"RiseDock v$VERSION\",\"body\":\"**更新内容：**\n- 优化用户体验\n- 修复已知问题\"}" \
+            "https://gitee.com/api/v5/repos/rise-dock/RiseDock/releases" \
+            | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)
+
+          echo "Release ID: $RELEASE_ID"
+
+          # 上传安装包
+          EXE=$(find src-tauri/target/release/bundle/nsis -name "*.exe" | head -1)
+          curl -s -u "$RISEDOCK_TOKEN" -X POST \
+            -F "file=@${EXE}" \
+            -F "name=RiseDock_${VERSION}_x64-setup.exe" \
+            "https://gitee.com/api/v5/repos/rise-dock/RiseDock/releases/${RELEASE_ID}/attach_files"
+
+          # 上传签名
+          SIG=$(find src-tauri/target/release/bundle/nsis -name "*.sig" | head -1)
+          curl -s -u "$RISEDOCK_TOKEN" -X POST \
+            -F "file=@${SIG}" \
+            -F "name=RiseDock_${VERSION}_x64-setup.exe.sig" \
+            "https://gitee.com/api/v5/repos/rise-dock/RiseDock/releases/${RELEASE_ID}/attach_files"
+
+          # 上传 latest.json
+          JSON=$(find src-tauri/target/release/bundle/nsis -name "latest.json" | head -1)
+          curl -s -u "$RISEDOCK_TOKEN" -X POST \
+            -F "file=@${JSON}" \
+            -F "name=latest.json" \
+            "https://gitee.com/api/v5/repos/rise-dock/RiseDock/releases/${RELEASE_ID}/attach_files"
+
+          echo "=== 发布完成 ==="
