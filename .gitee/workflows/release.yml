@@ -12,9 +12,18 @@ stages:
 
 build:
   stage: build
-  image: registry.gitee.com/tauri-apps/tauri:v2
+  image: ubuntu:22.04
+  before_script:
+    - apt-get update && apt-get install -y curl git
+    - curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+    - apt-get install -y nodejs
+    - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
   script:
-    - export PATH="$HOME/.cargo/bin:$PATH"
+    - export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
+    - source "$HOME/.cargo/env"
+    - node -v
+    - rustc --version
+    - cargo --version
     - npm install
     - npm run tauri build
     - echo "=== 构建产物 ==="
