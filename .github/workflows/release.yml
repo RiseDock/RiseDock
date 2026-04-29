@@ -10,22 +10,16 @@ env:
   OSS_BUCKET: risedock-releases
   OSS_ENDPOINT: oss-cn-beijing.aliyuncs.com
   GITEE_REPO: rise-dock/RiseDock
-  CARGO_NET_GIT_FETCH_WITH_CLI: true
 
 jobs:
   build:
     permissions:
       contents: write
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: src-tauri/target
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -35,22 +29,6 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
-        with:
-          update: true
-
-      - name: Add Windows target
-        run: rustup target add x86_64-pc-windows-msvc
-
-      - name: Install Linux dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            libappindicator3-dev \
-            librsvg2-dev \
-            patchelf \
-            libclang-dev \
-            clang
 
       - name: Install npm dependencies
         run: npm ci
@@ -66,12 +44,10 @@ jobs:
           releaseBody: '自动发布的 Release'
           releaseDraft: false
           prerelease: false
-          args: '--target x86_64-pc-windows-msvc'
 
       - name: Verify build artifacts
         run: |
-          echo "=== Build artifacts ==="
-          ls -la src-tauri/target/release/bundle/nsis/
+          Get-ChildItem -Path "src-tauri/target/release/bundle/nsis"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -84,7 +60,7 @@ jobs:
 
   publish:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     permissions:
       contents: write
 
@@ -100,53 +76,54 @@ jobs:
 
       - name: Verify artifacts
         run: |
-          echo "=== Downloaded artifacts ==="
-          ls -la ./build/
+          Get-ChildItem -Path "./build"
 
       # ========== 上传到阿里云 OSS ==========
       - name: Setup ossutil
+        shell: pwsh
         run: |
-          wget https://github.com/aliyun/ossutil/releases/download/1.7.19/ossutil-linux64 -O ossutil
-          chmod 755 ossutil
-          ./ossutil config \
-            --access-key-id ${{ secrets.OSS_ACCESS_KEY_ID }} \
-            --access-key-secret ${{ secrets.OSS_ACCESS_KEY_SECRET }} \
-            --endpoint ${{ env.OSS_ENDPOINT }}
+          Invoke-WebRequest -Uri "https://github.com/aliyun/ossutil/releases/download/1.7.19/ossutil-windows64.exe" -OutFile "ossutil.exe"
+
+      - name: Config ossutil
+        shell: pwsh
+        env:
+          OSS_ACCESS_KEY_ID: ${{ secrets.OSS_ACCESS_KEY_ID }}
+          OSS_ACCESS_KEY_SECRET: ${{ secrets.OSS_ACCESS_KEY_SECRET }}
+        run: |
+          $env:OSS_ACCESS_KEY_ID = "${{ secrets.OSS_ACCESS_KEY_ID }}"
+          $env:OSS_ACCESS_KEY_SECRET = "${{ secrets.OSS_ACCESS_KEY_SECRET }}"
+          .\ossutil.exe config -i $env:OSS_ACCESS_KEY_ID -k $env:OSS_ACCESS_KEY_SECRET -e ${{ env.OSS_ENDPOINT }}
 
       - name: Upload to OSS
+        shell: pwsh
         run: |
-          EXE=$(ls ./build/*.exe | head -1)
-          SIG=$(ls ./build/*.sig | head -1)
-          OSS_DIR="app-${{ env.VERSION }}"
-          
-          echo "Uploading to OSS..."
-          ./ossutil cp ./build/*.exe oss://${{ env.OSS_BUCKET }}/${OSS_DIR}/ --object-type=file
-          ./ossutil cp ./build/*.sig oss://${{ env.OSS_BUCKET }}/${OSS_DIR}/ --object-type=file
-          echo "OSS upload complete!"
+          $exe = Get-ChildItem -Path "./build" -Filter "*.exe" | Select-Object -First 1
+          $sig = Get-ChildItem -Path "./build" -Filter "*.sig" | Select-Object -First 1
+          $ossDir = "app-${{ env.VERSION }}"
+          Write-Host "Uploading to OSS..."
+          .\ossutil.exe cp $exe.FullName "oss://${{ env.OSS_BUCKET }}/${ossDir}/"
+          .\ossutil.exe cp $sig.FullName "oss://${{ env.OSS_BUCKET }}/${ossDir}/"
+          Write-Host "OSS upload complete!"
 
       - name: Generate latest.json for OSS
+        shell: pwsh
         run: |
-          EXE_NAME=$(basename $(ls ./build/*.exe | head -1))
-          OSS_EXE_URL="https://${{ env.OSS_BUCKET }}.${{ env.OSS_ENDPOINT }}/app-${{ env.VERSION }}/${EXE_NAME}"
-          
-          python3 << EOF
-          import json
-          with open('./build/latest.json', 'r') as f:
-              data = json.load(f)
-          data['platforms']['windows']['url'] = '$OSS_EXE_URL'
-          with open('./build/latest_modified.json', 'w') as f:
-              json.dump(data, f, indent=2, ensure_ascii=False)
-          print("Updated latest.json:")
-          print(json.dumps(data, indent=2, ensure_ascii=False))
-          EOF
+          $exe = Get-ChildItem -Path "./build" -Filter "*.exe" | Select-Object -First 1
+          $ossExeUrl = "https://${{ env.OSS_BUCKET }}.${{ env.OSS_ENDPOINT }}/app-${{ env.VERSION }}/$($exe.Name)"
+          $json = Get-Content "./build/latest.json" | ConvertFrom-Json
+          $json.platforms.windows.url = $ossExeUrl
+          $json | ConvertTo-Json -Depth 10 | Set-Content "./build/latest_modified.json"
+          Write-Host "Updated latest.json:"
+          Get-Content "./build/latest_modified.json"
 
       - name: Upload latest.json to OSS
+        shell: pwsh
         run: |
-          OSS_DIR="app-${{ env.VERSION }}"
-          ./ossutil cp ./build/latest_modified.json oss://${{ env.OSS_BUCKET }}/${OSS_DIR}/latest.json --object-type=file
-          echo ""
-          echo "=== OSS URL ==="
-          echo "https://${{ env.OSS_BUCKET }}.${{ env.OSS_ENDPOINT }}/${OSS_DIR}/latest.json"
+          $ossDir = "app-${{ env.VERSION }}"
+          .\ossutil.exe cp "./build/latest_modified.json" "oss://${{ env.OSS_BUCKET }}/${ossDir}/latest.json"
+          Write-Host ""
+          Write-Host "=== OSS URL ==="
+          Write-Host "https://${{ env.OSS_BUCKET }}.${{ env.OSS_ENDPOINT }}/${ossDir}/latest.json"
 
       # ========== 发布到 GitHub Release ==========
       - name: Create GitHub Release
@@ -163,55 +140,55 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # ========== 发布到 Gitee Release ==========
-      - name: Get release info
-        id: release
-        run: |
-          TAG_NAME="${GITHUB_REF#refs/tags/}"
-          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_OUTPUT
-
       - name: Delete old Gitee release
+        shell: pwsh
         run: |
-          EXISTING_ID=$(curl -s -u "${{ secrets.GITEE_TOKEN }}" \
-            "https://gitee.com/api/v5/repos/${{ env.GITEE_REPO }}/releases/tags/app-${{ steps.release.outputs.TAG_NAME }}" \
-            | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2 || true)
-          
-          if [ -n "$EXISTING_ID" ] && [ "$EXISTING_ID" != "null" ]; then
-            echo "Deleting old release: $EXISTING_ID"
-            curl -s -u "${{ secrets.GITEE_TOKEN }}" -X DELETE \
-              "https://gitee.com/api/v5/repos/${{ env.GITEE_REPO }}/releases/$EXISTING_ID"
-          fi
+          $headers = @{ Authorization = "token ${{ secrets.GITEE_TOKEN }}" }
+          $version = "${{ env.VERSION }}"
+          try {
+            $existing = Invoke-RestMethod -Uri "https://gitee.com/api/v5/repos/${{ env.GITEE_REPO }}/releases/tags/app-$version" -Headers $headers
+            if ($existing.id) {
+              Write-Host "Deleting old release: $($existing.id)"
+              Invoke-RestMethod -Uri "https://gitee.com/api/v5/repos/${{ env.GITEE_REPO }}/releases/$($existing.id)" -Headers $headers -Method Delete
+            }
+          } catch { Write-Host "No existing release found" }
 
       - name: Create Gitee Release
+        shell: pwsh
         id: gitee
         run: |
-          BODY="**\u56fd\u5185\u4f7f\u7528\uff1a https://${{ env.OSS_BUCKET }}.${{ env.OSS_ENDPOINT }}/app-${{ steps.release.outputs.TAG_NAME }}/latest.json**"
-          BODY+="\n\n---\n\n**\u66f4\u65b0\u5185\u5bb9\uff1a**\n- \u81ea\u52a8\u66f4\u65b0\u68c0\u67e5\n- \u4f18\u5316\u7528\u6237\u4f53\u9a8c\n- \u4fee\u590d\u5df2\u77e5\u95ee\u9898"
-          
-          RELEASE_ID=$(curl -s -u "${{ secrets.GITEE_TOKEN }}" -X POST \
-            -H "Content-Type: application/json" \
-            -d "{\"tag_name\":\"app-${{ steps.release.outputs.TAG_NAME }}\",\"name\":\"RiseDock ${{ steps.release.outputs.TAG_NAME }}\",\"body\":\"${BODY}\"}" \
-            "https://gitee.com/api/v5/repos/${{ env.GITEE_REPO }}/releases" \
-            | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)
-          
-          echo "Created release ID: $RELEASE_ID"
-          echo "RELEASE_ID=$RELEASE_ID" >> $GITHUB_OUTPUT
+          $headers = @{
+            Authorization = "token ${{ secrets.GITEE_TOKEN }}"
+            "Content-Type" = "application/json"
+          }
+          $body = @{
+            tag_name = "app-${{ env.VERSION }}"
+            name = "RiseDock ${{ env.VERSION }}"
+            body = "**国内使用：https://${{ env.OSS_BUCKET }}.${{ env.OSS_ENDPOINT }}/app-${{ env.VERSION }}/latest.json**"
+          } | ConvertTo-Json
+          $result = Invoke-RestMethod -Uri "https://gitee.com/api/v5/repos/${{ env.GITEE_REPO }}/releases" -Headers $headers -Method Post -Body $body
+          Write-Host "Created release ID: $($result.id)"
+          Write-Host "RELEASE_ID=$($result.id)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
       - name: Upload signature to Gitee
+        shell: pwsh
         run: |
-          SIG=$(ls ./build/*.sig | head -1)
-          curl -s -u "${{ secrets.GITEE_TOKEN }}" -X POST \
-            -F "file=@${SIG}" \
-            -F "name=$(basename $SIG)" \
-            "https://gitee.com/api/v5/repos/${{ env.GITEE_REPO }}/releases/${{ steps.gitee.outputs.RELEASE_ID }}/attach_files"
+          $sig = Get-ChildItem -Path "./build" -Filter "*.sig" | Select-Object -First 1
+          $headers = @{ Authorization = "token ${{ secrets.GITEE_TOKEN }}" }
+          $form = @{
+            file = Get-Item $sig.FullName
+            name = $sig.Name
+          }
+          Invoke-RestMethod -Uri "https://gitee.com/api/v5/repos/${{ env.GITEE_REPO }}/releases/${{ steps.gitee.outputs.RELEASE_ID }}/attach_files" -Headers $headers -Method Post -Form $form
 
       - name: Summary
         run: |
-          echo ""
-          echo "========================================"
-          echo "  Release ${{ env.VERSION }} Complete!"
-          echo "========================================"
-          echo ""
-          echo "GitHub: https://github.com/${{ github.repository }}/releases/tag/${{ env.VERSION }}"
-          echo "Gitee:  https://gitee.com/${{ env.GITEE_REPO }}/releases/tag/app-${{ env.VERSION }}"
-          echo "OSS:    https://${{ env.OSS_BUCKET }}.${{ env.OSS_ENDPOINT }}/app-${{ env.VERSION }}/latest.json"
-          echo ""
+          Write-Host ""
+          Write-Host "========================================"
+          Write-Host "  Release ${{ env.VERSION }} Complete!"
+          Write-Host "========================================"
+          Write-Host ""
+          Write-Host "GitHub: https://github.com/${{ github.repository }}/releases/tag/${{ env.VERSION }}"
+          Write-Host "Gitee:  https://gitee.com/${{ env.GITEE_REPO }}/releases/tag/app-${{ env.VERSION }}"
+          Write-Host "OSS:    https://${{ env.OSS_BUCKET }}.${{ env.OSS_ENDPOINT }}/app-${{ env.VERSION }}/latest.json"
+          Write-Host ""
