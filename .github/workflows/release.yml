@@ -38,6 +38,9 @@ jobs:
         with:
           update: true
 
+      - name: Add Windows target
+        run: rustup target add x86_64-pc-windows-msvc
+
       - name: Install Linux dependencies
         run: |
           sudo apt-get update
@@ -63,6 +66,7 @@ jobs:
           releaseBody: '自动发布的 Release'
           releaseDraft: false
           prerelease: false
+          args: '--target x86_64-pc-windows-msvc'
 
       - name: Verify build artifacts
         run: |
