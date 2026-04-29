@@ -90,7 +90,7 @@ jobs:
           $env:OSS_ACCESS_KEY_ID = "${{ secrets.OSS_ACCESS_KEY_ID }}"
           $env:OSS_ACCESS_KEY_SECRET = "${{ secrets.OSS_ACCESS_KEY_SECRET }}"
           Write-Host "Found ossutil: $($ossutil.FullName)"
-          .\$($ossutil.Name) config -i $env:OSS_ACCESS_KEY_ID -k $env:OSS_ACCESS_KEY_SECRET -e ${{ env.OSS_ENDPOINT }}
+          & $ossutil.FullName config -i $env:OSS_ACCESS_KEY_ID -k $env:OSS_ACCESS_KEY_SECRET -e ${{ env.OSS_ENDPOINT }}
 
       - name: Upload to OSS
         shell: pwsh
@@ -100,8 +100,8 @@ jobs:
           $sig = Get-ChildItem -Path "./build" -Filter "*.sig" | Select-Object -First 1
           $ossDir = "app-${{ env.VERSION }}"
           Write-Host "Uploading to OSS..."
-          .\$($ossutil.Name) cp $exe.FullName "oss://${{ env.OSS_BUCKET }}/${ossDir}/"
-          .\$($ossutil.Name) cp $sig.FullName "oss://${{ env.OSS_BUCKET }}/${ossDir}/"
+          & $ossutil.FullName cp $exe.FullName "oss://${{ env.OSS_BUCKET }}/${ossDir}/"
+          & $ossutil.FullName cp $sig.FullName "oss://${{ env.OSS_BUCKET }}/${ossDir}/"
           Write-Host "OSS upload complete!"
 
       - name: Generate latest.json for OSS
@@ -120,7 +120,7 @@ jobs:
         run: |
           $ossutil = Get-ChildItem -Path "." -Recurse -Filter "ossutil*.exe" | Select-Object -First 1
           $ossDir = "app-${{ env.VERSION }}"
-          .\$($ossutil.Name) cp "./build/latest_modified.json" "oss://${{ env.OSS_BUCKET }}/${ossDir}/latest.json"
+          & $ossutil.FullName cp "./build/latest_modified.json" "oss://${{ env.OSS_BUCKET }}/${ossDir}/latest.json"
           Write-Host ""
           Write-Host "=== OSS URL ==="
           Write-Host "https://${{ env.OSS_BUCKET }}.${{ env.OSS_ENDPOINT }}/${ossDir}/latest.json"
