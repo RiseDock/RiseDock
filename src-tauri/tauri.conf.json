@@ -48,7 +48,6 @@
       },
       "nsis": {
         "installerIcon": "icons/icon.ico",
-        "installerTitle": "启程典",
         "headerImage": null,
         "sidebarImage": null,
         "installMode": "currentUser",
