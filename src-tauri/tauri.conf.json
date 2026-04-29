@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "RiseDock",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "identifier": "com.risedock.app",
   "build": {
     "beforeBuildCommand": "npm run build",
@@ -63,7 +63,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEEwQ0U0RTFGRjlFRTI0M0MKUldROEpPNzVIMDdPb0pKOHAwdDdDVUZKVE1wbXI4WnpuYkcyMGU0UTAyd2FOOFF0MDRLbzQ2Z08K",
       "endpoints": [
-        "https://gitee.com/rise-dock/RiseDock/releases/download/app-v1.0.5/latest.json"
+        "https://gitee.com/rise-dock/RiseDock/releases/download/app-v1.0.6/latest.json"
       ]
     }
   }
