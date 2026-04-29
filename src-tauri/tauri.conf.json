@@ -61,10 +61,9 @@
       "open": true
     },
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEEwQ0U0RTFGRjlFRTI0M0MKUldROEpPNzVIMDdPb0pKOHAwdDdDVUZKVE1wbXI4WnpuYkcyMGU0UTAyd2FOOFF0MDRLbzQ2Z04K",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEEwQ0U0RTFGRjlFRTI0M0MKUldROEpPNzVIMDdPb0pKOHAwdDdDVUZKVE1wbXI4WnpuYkcyMGU0UTAyd2FOOFF0MDRLbzQ2Z08K",
       "endpoints": [
-        "https://gitee.com/rise-dock/RiseDock/releases/download/app-v1.0.4/latest.json",
-        "https://github.com/RiseDock/RiseDock/releases/latest/download/latest.json"
+        "https://gitee.com/rise-dock/RiseDock/releases/download/app-v1.0.4/latest.json"
       ]
     }
   }
