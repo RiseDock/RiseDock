@@ -55,7 +55,6 @@ jobs:
           releaseBody: '自动发布的 Release'
           releaseDraft: false
           prerelease: false
-          args: --bundles nsis
 
       - name: Verify build artifacts
         run: |
