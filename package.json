@@ -1,6 +1,6 @@
 {
   "name": "risedock",
-  "version": "1.1.14",
+  "version": "1.1.18",
   "description": "启程典 - 场景化工作环境启动工具",
   "type": "module",
   "scripts": {
