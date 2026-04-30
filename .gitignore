@@ -20,6 +20,23 @@ Thumbs.db
 *.exe
 *.msi
 build.log
+build_log*.txt
+build_log*.txt
+build_err.txt
+build_stdout.txt
+build_stderr.txt
+build-deploy.bat
+build.bat
+build-signed.ps1
+build_helper.py
+sign_helper.py
+sign_helper_err.txt
+signer_stdout.txt
+signer_stderr.txt
+env_check.txt
+env_debug.txt
+py_test.txt
+git_status*.txt
 
 # Updater signing keys (NEVER commit private key!)
 .tauri-updater-key
