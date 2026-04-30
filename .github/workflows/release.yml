@@ -9,7 +9,6 @@ env:
   VERSION: ${{ github.ref_name }}
   OSS_BUCKET: risedock-releases
   OSS_ENDPOINT: oss-cn-beijing.aliyuncs.com
-  GITEE_REPO: rise-dock/RiseDock
 
 jobs:
   build:
@@ -191,50 +190,26 @@ jobs:
           Write-Host "https://${{ env.OSS_BUCKET }}.${{ env.OSS_ENDPOINT }}/${ossDir}/latest.json"
 
       # ========== 发布到 GitHub Release ==========
+      - name: Rename latest.json for GitHub
+        shell: pwsh
+        run: |
+          $modifiedJson = Join-Path $env:GITHUB_WORKSPACE "latest_modified.json"
+          $latestJson = Join-Path $env:GITHUB_WORKSPACE "latest.json"
+          Copy-Item $modifiedJson $latestJson -Force
+          Write-Host "Created latest.json"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
             ./*.exe
             ./*.sig
-            ${{ github.workspace }}/latest_modified.json
+            ${{ github.workspace }}/latest.json
           draft: false
           prerelease: false
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # ========== 发布到 Gitee Release ==========
-      - name: Delete old Gitee release
-        shell: pwsh
-        run: |
-          $headers = @{ Authorization = "token ${{ secrets.GITEE_TOKEN }}" }
-          $version = "${{ env.VERSION }}"
-          try {
-            $existing = Invoke-RestMethod -Uri "https://gitee.com/api/v5/repos/${{ env.GITEE_REPO }}/releases/tags/$version" -Headers $headers
-            if ($existing.id) {
-              Write-Host "Deleting old release: $($existing.id)"
-              Invoke-RestMethod -Uri "https://gitee.com/api/v5/repos/${{ env.GITEE_REPO }}/releases/$($existing.id)" -Headers $headers -Method Delete
-            }
-          } catch { Write-Host "No existing release found" }
-
-      - name: Create Gitee Release
-        shell: pwsh
-        id: gitee
-        run: |
-          $headers = @{
-            Authorization = "token ${{ secrets.GITEE_TOKEN }}"
-            "Content-Type" = "application/json"
-          }
-          $body = @{
-            tag_name = "${{ env.VERSION }}"
-            target_commitish = "main"
-            name = "RiseDock ${{ env.VERSION }}"
-            body = "**国内使用：https://${{ env.OSS_BUCKET }}.${{ env.OSS_ENDPOINT }}/app-${{ env.VERSION }}/latest.json**"
-          } | ConvertTo-Json
-          $result = Invoke-RestMethod -Uri "https://gitee.com/api/v5/repos/${{ env.GITEE_REPO }}/releases" -Headers $headers -Method Post -Body $body
-          Write-Host "Created release ID: $($result.id)"
-          Write-Host "RELEASE_ID=$($result.id)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
       - name: Summary
         run: |
@@ -244,6 +219,5 @@ jobs:
           Write-Host "========================================"
           Write-Host ""
           Write-Host "GitHub: https://github.com/${{ github.repository }}/releases/tag/${{ env.VERSION }}"
-          Write-Host "Gitee:  https://gitee.com/${{ env.GITEE_REPO }}/releases/tag/${{ env.VERSION }}"
           Write-Host "OSS:    https://${{ env.OSS_BUCKET }}.${{ env.OSS_ENDPOINT }}/app-${{ env.VERSION }}/latest.json"
           Write-Host ""
