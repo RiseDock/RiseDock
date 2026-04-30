@@ -24,3 +24,8 @@ build.log
 # Updater signing keys (NEVER commit private key!)
 .tauri-updater-key
 .tauri-updater-key2
+
+# OSS 部署相关（含密钥信息，绝不推送！）
+.ossutilconfig
+publish-oss.ps1
+latest.json
