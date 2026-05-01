@@ -55,9 +55,24 @@ function App() {
         // 启动后静默检查更新（3秒后，避免和初始化抢资源）
         setTimeout(async () => {
           try {
-            const { check } = await import('@tauri-apps/plugin-updater');
-            const update = await check();
-            if (update) {
+            const CURRENT_VERSION = '1.1.19';
+            const resp = await fetch(
+              'https://risedock-releases.oss-cn-beijing.aliyuncs.com/latest/latest.json?t=' + Date.now(),
+              { cache: 'no-store' }
+            );
+            if (!resp.ok) return;
+            const data = await resp.json();
+            const latestVersion: string = data.version ?? '';
+            const pa = CURRENT_VERSION.split('.').map(Number);
+            const pb = latestVersion.split('.').map(Number);
+            let hasUpdate = false;
+            for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+              const na = pa[i] ?? 0;
+              const nb = pb[i] ?? 0;
+              if (nb > na) { hasUpdate = true; break; }
+              if (nb < na) break;
+            }
+            if (hasUpdate) {
               setShowUpdateModal(true);
             }
           } catch (e) {

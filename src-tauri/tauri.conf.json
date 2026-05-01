@@ -29,7 +29,7 @@
   },
   "bundle": {
     "active": true,
-    "createUpdaterArtifacts": true,
+    "createUpdaterArtifacts": false,
     "targets": ["nsis"],
     "icon": [
       "icons/32x32.png",
@@ -59,12 +59,6 @@
   "plugins": {
     "shell": {
       "open": true
-    },
-    "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEEwQ0U0RTFGRjlFRTI0M0MKUldROEpPNzVIMDdPb0pKOHAwdDdDVUZKVE1wbXI4WnpuYkcyMGU0UTAyd2FOOFF0MDRLbzQ2Z08K",
-      "endpoints": [
-        "https://risedock-releases.oss-cn-beijing.aliyuncs.com/latest/latest.json"
-      ]
     }
   }
 }

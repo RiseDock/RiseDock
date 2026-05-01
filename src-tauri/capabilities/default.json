@@ -29,11 +29,13 @@
     "autostart:allow-enable",
     "autostart:allow-disable",
     "autostart:allow-is-enabled",
-    "updater:default",
-    "process:allow-restart",
     {
       "identifier": "fs:allow-write-text-file",
       "allow": [{"path": "$DOWNLOAD/*"}, {"path": "$DOCUMENT/*"}, {"path": "$DESKTOP/*"}, {"path": "$HOME/*"}]
+    },
+    {
+      "identifier": "fs:allow-write-file",
+      "allow": [{"path": "$DOWNLOAD/*"}]
     },
     {
       "identifier": "fs:allow-read-text-file",
