@@ -56,9 +56,10 @@ function App() {
         setTimeout(async () => {
           try {
             const CURRENT_VERSION = '1.1.19';
-            const resp = await fetch(
+            const { fetch: tauriFetch } = await import('@tauri-apps/plugin-http');
+            const resp = await tauriFetch(
               'https://risedock-releases.oss-cn-beijing.aliyuncs.com/latest/latest.json?t=' + Date.now(),
-              { cache: 'no-store' }
+              { connectTimeout: 15000 }
             );
             if (!resp.ok) return;
             const data = await resp.json();

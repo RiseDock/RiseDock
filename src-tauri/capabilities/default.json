@@ -40,6 +40,10 @@
     {
       "identifier": "fs:allow-read-text-file",
       "allow": [{"path": "$DOWNLOAD/*"}, {"path": "$DOCUMENT/*"}, {"path": "$DESKTOP/*"}, {"path": "$HOME/*"}]
+    },
+    {
+      "identifier": "http:default",
+      "allow": [{"url": "https://risedock-releases.oss-cn-beijing.aliyuncs.com/**"}]
     }
   ]
 }

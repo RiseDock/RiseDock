@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { open as shellOpen, Command } from '@tauri-apps/plugin-shell';
 import { writeFile, BaseDirectory } from '@tauri-apps/plugin-fs';
+import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
 
 const LATEST_JSON_URL = 'https://risedock-releases.oss-cn-beijing.aliyuncs.com/latest/latest.json';
 const CURRENT_VERSION = '1.1.19';
@@ -53,7 +54,7 @@ export default function UpdateModal({ onClose }: UpdateModalProps) {
     setStage('checking');
     setErrorMsg('');
     try {
-      const resp = await fetch(`${LATEST_JSON_URL}?t=${Date.now()}`, { cache: 'no-store' });
+      const resp = await tauriFetch(`${LATEST_JSON_URL}?t=${Date.now()}`, { connectTimeout: 15000 });
       if (!resp.ok) throw new Error(`服务器返回 HTTP ${resp.status}`);
       const data = await resp.json();
       const latestVersion: string = data.version ?? '0.0.0';
@@ -91,7 +92,7 @@ export default function UpdateModal({ onClose }: UpdateModalProps) {
     setTotalMB(0);
 
     try {
-      const resp = await fetch(latestInfo.url);
+      const resp = await tauriFetch(latestInfo.url, { connectTimeout: 60000 });
       if (!resp.ok) throw new Error(`下载失败 HTTP ${resp.status}`);
 
       const contentLength = Number(resp.headers.get('content-length') ?? 0);
