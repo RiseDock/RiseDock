@@ -51,6 +51,7 @@ export default function LaunchItemRow({
 
   const handleDelete = () => {
     setError(null);
+    setContextMenu(null); // 先关闭右键菜单
     setDeleteConfirm(true);
   };
 
@@ -110,7 +111,17 @@ export default function LaunchItemRow({
             ⋮⋮
           </div>
 
-          <span style={{ fontSize: '24px' }}>{item.type === 'app' ? '💻' : item.type === 'file' ? '📁' : item.type === 'url' ? '🌐' : item.type === 'image' ? '🖼️' : '📦'}</span>
+          <span style={{ fontSize: '24px' }}>
+            {item.icon ? (
+              <img
+                src={`data:image/png;base64,${item.icon}`}
+                alt=""
+                style={{ width: '24px', height: '24px', objectFit: 'contain' }}
+              />
+            ) : (
+              item.type === 'app' ? '💻' : item.type === 'file' ? '📄' : item.type === 'folder' ? '📁' : item.type === 'url' ? '🌐' : item.type === 'image' ? '🖼️' : '📦'
+            )}
+          </span>
 
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 500, color: '#1f2937' }}>

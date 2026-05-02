@@ -32,7 +32,15 @@ export function DragOverlayItem({ item }: { item: LaunchItem }) {
       borderRadius: '10px',
       boxShadow: '0 8px 24px rgba(102, 126, 234, 0.4)',
     }}>
-      <span style={{ fontSize: '20px' }}>{config.icon}</span>
+      {item.icon ? (
+        <img
+          src={`data:image/png;base64,${item.icon}`}
+          alt=""
+          style={{ width: '20px', height: '20px', objectFit: 'contain' }}
+        />
+      ) : (
+        <span style={{ fontSize: '20px' }}>{config.icon}</span>
+      )}
       <span style={{ fontSize: '14px', fontWeight: 600, color: '#fff' }}>{item.name}</span>
     </div>
   );
@@ -42,6 +50,7 @@ export default function SortableItem({ item, sceneId, onEdit, highlightedId }: S
   const { deleteLaunchItem, toggleItem, togglePin } = useSceneStore();
   const [showConfirm, setShowConfirm] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   const {
     attributes, listeners, setNodeRef, transform, transition, isDragging, isOver
@@ -129,7 +138,20 @@ export default function SortableItem({ item, sceneId, onEdit, highlightedId }: S
       </button>
 
       {/* 图标 */}
-      <span style={{ fontSize: '20px', filter: item.enabled ? 'none' : 'grayscale(0.5)' }}>{config.icon}</span>
+      {item.icon ? (
+        <img
+          src={`data:image/png;base64,${item.icon}`}
+          alt=""
+          style={{
+            width: '20px',
+            height: '20px',
+            objectFit: 'contain',
+            filter: item.enabled ? 'none' : 'grayscale(0.5)',
+          }}
+        />
+      ) : (
+        <span style={{ fontSize: '20px', filter: item.enabled ? 'none' : 'grayscale(0.5)' }}>{config.icon}</span>
+      )}
 
       {/* 信息 */}
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -183,13 +205,13 @@ export default function SortableItem({ item, sceneId, onEdit, highlightedId }: S
       </div>
 
       {/* 删除确认 */}
-      {showConfirm && (
+      {(showConfirm || deleteTarget) && (
         <div
           style={{
             position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999999,
           }}
-          onClick={() => setShowConfirm(false)}
+          onClick={() => { setShowConfirm(false); setDeleteTarget(null); }}
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -199,17 +221,17 @@ export default function SortableItem({ item, sceneId, onEdit, highlightedId }: S
             }}
           >
             <p style={{ color: '#e2e8f0', fontSize: '13px', margin: '0 0 16px' }}>
-              删除「{item.name}」？
+              删除「{(deleteTarget || item).name}」？
             </p>
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
               <button
-                onClick={() => setShowConfirm(false)}
+                onClick={() => { setShowConfirm(false); setDeleteTarget(null); }}
                 style={{ padding: '8px 16px', background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: '6px', cursor: 'pointer', color: '#94a3b8', fontSize: '12px' }}
               >
                 取消
               </button>
               <button
-                onClick={() => { handleDelete(); setShowConfirm(false); }}
+                onClick={() => { deleteLaunchItem(sceneId, (deleteTarget || item).id); setShowConfirm(false); setDeleteTarget(null); }}
                 style={{ padding: '8px 16px', background: '#ef4444', border: 'none', borderRadius: '6px', cursor: 'pointer', color: '#fff', fontSize: '12px', fontWeight: 500 }}
               >
                 删除
@@ -226,7 +248,7 @@ export default function SortableItem({ item, sceneId, onEdit, highlightedId }: S
           onClose={() => setContextMenu(null)} onLaunch={handleContextLaunch}
           onEdit={() => { onEdit(item); setContextMenu(null); }}
           onToggle={() => { toggleItem(sceneId, item.id); setContextMenu(null); }}
-          onDelete={() => { deleteLaunchItem(sceneId, item.id); setContextMenu(null); }}
+          onDelete={() => { setDeleteTarget({ id: item.id, name: item.name }); setContextMenu(null); }}
           onCopyPath={handleCopyPath}
           onTogglePin={() => { togglePin(sceneId, item.id); setContextMenu(null); }}
         />

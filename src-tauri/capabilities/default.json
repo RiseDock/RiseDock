@@ -5,8 +5,20 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
-    "shell:allow-open",
-    "shell:allow-execute",
+    {
+      "identifier": "shell:allow-open",
+      "allow": [
+        { "shell:open": { "windows": "*", "url": "local" } },
+        { "shell:open": { "windows": "*", "url": "remote" } }
+      ]
+    },
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        { "name": "cmd", "cmd": "cmd", "args": true, "sidecar": false },
+        { "name": "explorer", "cmd": "explorer", "args": true, "sidecar": false }
+      ]
+    },
     "dialog:allow-open",
     "dialog:allow-save",
     "dialog:allow-message",
@@ -31,19 +43,36 @@
     "autostart:allow-is-enabled",
     {
       "identifier": "fs:allow-write-text-file",
-      "allow": [{"path": "$DOWNLOAD/*"}, {"path": "$DOCUMENT/*"}, {"path": "$DESKTOP/*"}, {"path": "$HOME/*"}]
+      "allow": [
+        { "path": "$DOWNLOAD/*" },
+        { "path": "$DOCUMENT/*" },
+        { "path": "$DESKTOP/*" },
+        { "path": "$HOME/*" }
+      ]
     },
     {
       "identifier": "fs:allow-write-file",
-      "allow": [{"path": "$DOWNLOAD/*"}]
+      "allow": [
+        { "path": "$DOWNLOAD/*" }
+      ]
     },
     {
       "identifier": "fs:allow-read-text-file",
-      "allow": [{"path": "$DOWNLOAD/*"}, {"path": "$DOCUMENT/*"}, {"path": "$DESKTOP/*"}, {"path": "$HOME/*"}]
+      "allow": [
+        { "path": "$DOWNLOAD/*" },
+        { "path": "$DOCUMENT/*" },
+        { "path": "$DESKTOP/*" },
+        { "path": "$HOME/*" }
+      ]
     },
     {
       "identifier": "http:default",
-      "allow": [{"url": "https://risedock-releases.oss-cn-beijing.aliyuncs.com/**"}]
+      "allow": [
+        { "url": "https://risedock-releases.oss-cn-beijing.aliyuncs.com/**" }
+      ]
     }
-  ]
+  ],
+  "remote": {
+    "urls": ["https://*", "http://*"]
+  }
 }

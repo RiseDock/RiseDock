@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { open as shellOpen, Command } from '@tauri-apps/plugin-shell';
 import { writeFile, BaseDirectory } from '@tauri-apps/plugin-fs';
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
+import { downloadDir } from '@tauri-apps/api/path';
+import { getVersion } from '@tauri-apps/api/app';
 
 const LATEST_JSON_URL = 'https://risedock-releases.oss-cn-beijing.aliyuncs.com/latest/latest.json';
-const CURRENT_VERSION = '1.1.19';
 
 interface LatestInfo {
   version: string;
@@ -49,11 +50,16 @@ export default function UpdateModal({ onClose }: UpdateModalProps) {
   const [downloadedMB, setDownloadedMB] = useState(0);
   const [totalMB, setTotalMB] = useState(0);
   const [savedFilename, setSavedFilename] = useState('');
+  const [currentVersion, setCurrentVersion] = useState('');
 
   const checkForUpdate = useCallback(async () => {
     setStage('checking');
     setErrorMsg('');
     try {
+      // 动态获取当前版本号（从 tauri.conf.json 读取）
+      const ver = await getVersion();
+      setCurrentVersion(ver);
+
       const resp = await tauriFetch(`${LATEST_JSON_URL}?t=${Date.now()}`, { connectTimeout: 15000 });
       if (!resp.ok) throw new Error(`服务器返回 HTTP ${resp.status}`);
       const data = await resp.json();
@@ -62,7 +68,7 @@ export default function UpdateModal({ onClose }: UpdateModalProps) {
       if (!url) throw new Error('更新地址缺失');
       const filename = url.split('/').pop() ?? `RiseDock_${latestVersion}_x64-setup.exe`;
 
-      if (compareVersion(latestVersion, CURRENT_VERSION) > 0) {
+      if (compareVersion(latestVersion, ver) > 0) {
         setLatestInfo({
           version: latestVersion,
           date: data.date ?? '',
@@ -135,17 +141,21 @@ export default function UpdateModal({ onClose }: UpdateModalProps) {
     }
   };
 
-  // 打开安装包（让系统直接运行它）
+  // 1. 先尝试直接运行安装包（cmd /c start，比 shellOpen 更可靠）
+  // 2. 失败了才打开下载目录，高亮选中安装包文件
   const handleInstall = async () => {
     try {
-      // 用 shell open 打开文件，Windows 会弹出 UAC 并运行安装程序
-      await shellOpen(`%USERPROFILE%\\Downloads\\${savedFilename}`);
+      const dir = await downloadDir();
+      const exePath = `${dir}\\${savedFilename}`;
+      await Command.create('cmd', ['/c', 'start', '', exePath]).execute();
     } catch {
-      // fallback：打开下载目录让用户手动双击
+      // 降级：打开下载目录并选中安装包文件
       try {
-        await Command.create('explorer', ['%USERPROFILE%\\Downloads']).execute();
-      } catch (e2) {
-        setErrorMsg('请手动前往下载目录运行安装包：' + savedFilename);
+        const dir = await downloadDir();
+        await Command.create('explorer', ['/select,', dir]).execute();
+      } catch {
+        setErrorMsg('安装失败，请手动打开下载目录双击：' + savedFilename);
+        setStage('error');
       }
     }
   };
@@ -228,7 +238,7 @@ export default function UpdateModal({ onClose }: UpdateModalProps) {
         {stage === 'no-update' && (
           <>
             <h3 style={{ color: '#fff', fontSize: '16px', fontWeight: 600, margin: '0 0 8px' }}>已是最新版本</h3>
-            <p style={{ color: '#8b949e', fontSize: '13px', margin: '0 0 20px' }}>当前 v{CURRENT_VERSION} 已是最新，无需更新</p>
+            <p style={{ color: '#8b949e', fontSize: '13px', margin: '0 0 20px' }}>当前 v{currentVersion} 已是最新，无需更新</p>
             <button style={btnGhost}
               onClick={onClose}
               onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
@@ -315,7 +325,7 @@ export default function UpdateModal({ onClose }: UpdateModalProps) {
               {savedFilename}
             </p>
             <p style={{ color: '#8b949e', fontSize: '12px', margin: '0 0 20px', lineHeight: '1.6' }}>
-              点击「立即安装」运行安装包完成升级，安装过程中程序将自动替换
+              点击「立即安装」打开下载目录，手动双击安装包完成升级
             </p>
             <div style={{ display: 'flex', gap: '12px' }}>
               <button style={btnGhost} onClick={onClose}

@@ -3,6 +3,7 @@ import { useSceneStore, useLicenseStore } from './stores';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { register, unregister, unregisterAll } from '@tauri-apps/plugin-global-shortcut';
+import { getVersion } from '@tauri-apps/api/app';
 import SceneDashboard from './components/SceneDashboard';
 import SceneEditor from './components/SceneEditor';
 import LicenseModal from './components/LicenseModal';
@@ -12,6 +13,7 @@ import ToastContainer from './components/Toast';
 import SettingsModal from './components/SettingsModal';
 import SearchModal from './components/SearchModal';
 import UpdateModal from './components/UpdateModal';
+import AboutModal from './components/AboutModal';
 import { Scene } from './types';
 
 function App() {
@@ -21,6 +23,7 @@ function App() {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [showAboutModal, setShowAboutModal] = useState(false);
   const [showCloseDialog, setShowCloseDialog] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [hotkeyScene, setHotkeyScene] = useState<Scene | null>(null);
@@ -55,7 +58,7 @@ function App() {
         // 启动后静默检查更新（3秒后，避免和初始化抢资源）
         setTimeout(async () => {
           try {
-            const CURRENT_VERSION = '1.1.19';
+            const currentVer = await getVersion();
             const { fetch: tauriFetch } = await import('@tauri-apps/plugin-http');
             const resp = await tauriFetch(
               'https://risedock-releases.oss-cn-beijing.aliyuncs.com/latest/latest.json?t=' + Date.now(),
@@ -64,7 +67,7 @@ function App() {
             if (!resp.ok) return;
             const data = await resp.json();
             const latestVersion: string = data.version ?? '';
-            const pa = CURRENT_VERSION.split('.').map(Number);
+            const pa = currentVer.split('.').map(Number);
             const pb = latestVersion.split('.').map(Number);
             let hasUpdate = false;
             for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
@@ -287,29 +290,6 @@ function App() {
           <span style={{ fontSize: '14px', color: '#a0aec0' }}>🚀 启程典</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          {/* 搜索按钮 */}
-          <button
-            onClick={() => setShowSearch(true)}
-            style={{
-              height: '28px',
-              padding: '0 12px',
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              color: '#a0aec0',
-              fontSize: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              marginRight: '8px',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
-            title="搜索 (Ctrl+K)"
-          >
-            🔍 <span style={{ opacity: 0.6 }}>Ctrl+K</span>
-          </button>
           <button
             onClick={handleMinimize}
             style={{
@@ -388,7 +368,9 @@ function App() {
             onOpenHelp={() => setShowHelpModal(true)}
             onOpenSettings={() => setShowSettingsModal(true)}
             onOpenUpdate={() => setShowUpdateModal(true)}
+            onOpenAbout={() => setShowAboutModal(true)}
             onSetHotkey={(scene) => setHotkeyScene(scene)}
+            onOpenSearch={() => setShowSearch(true)}
           />
         )}
       </main>
@@ -411,6 +393,11 @@ function App() {
       {/* 更新弹窗 */}
       {showUpdateModal && (
         <UpdateModal onClose={() => setShowUpdateModal(false)} />
+      )}
+
+      {/* 关于弹窗 */}
+      {showAboutModal && (
+        <AboutModal onClose={() => setShowAboutModal(false)} />
       )}
 
       {/* 快捷键设置弹窗 */}

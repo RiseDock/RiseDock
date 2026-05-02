@@ -5,6 +5,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { save, open } from '@tauri-apps/plugin-dialog';
 import ConfirmDialog from './ConfirmDialog';
 import { Scene } from '../types';
+import TopMenuBar from './TopMenuBar';
 
 type ViewMode = 'grid' | 'list';
 
@@ -25,21 +26,6 @@ function storeViewMode(mode: ViewMode) {
 }
 
 // ── 公共样式 ──
-const btnBase = (color: string) => ({
-  display: 'flex' as const,
-  alignItems: 'center' as const,
-  justifyContent: 'center' as const,
-  gap: '6px',
-  padding: '10px 16px',
-  border: 'none',
-  borderRadius: '10px',
-  cursor: 'pointer',
-  fontSize: '13px',
-  fontWeight: 500,
-  transition: 'all 0.2s',
-  whiteSpace: 'nowrap' as const,
-  flexShrink: 0,
-});
 
 // ── 场景卡片 ──
 function SceneCard({
@@ -230,10 +216,12 @@ interface SceneDashboardProps {
   onOpenHelp: () => void;
   onOpenSettings: () => void;
   onOpenUpdate: () => void;
+  onOpenAbout: () => void;
   onSetHotkey?: (scene: Scene) => void;
+  onOpenSearch: () => void;
 }
 
-export default function SceneDashboard({ onOpenLicense, onOpenHelp, onOpenSettings, onOpenUpdate, onSetHotkey }: SceneDashboardProps) {
+export default function SceneDashboard({ onOpenLicense, onOpenHelp, onOpenSettings, onOpenUpdate, onOpenAbout, onSetHotkey, onOpenSearch }: SceneDashboardProps) {
   const { scenes, addScene, selectScene, deleteScene, updateScene } = useSceneStore();
   const { isLicensed } = useLicenseStore();
   const [viewMode, setViewMode] = useState<ViewMode>(getStoredViewMode);
@@ -365,161 +353,19 @@ export default function SceneDashboard({ onOpenLicense, onOpenHelp, onOpenSettin
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'linear-gradient(180deg, #0f0f1a 0%, #1a1a2e 100%)' }}>
-      {/* 顶部工具栏 */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '20px 32px', borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-        flexShrink: 0,
-      }}>
-        {/* 左侧：标题 + 计数 */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <h2 style={{ fontSize: '18px', fontWeight: 600, color: '#fff', margin: 0 }}>我的场景</h2>
-          <span style={{
-            padding: '2px 10px', background: 'rgba(102, 126, 234, 0.2)',
-            borderRadius: '20px', fontSize: '12px', color: '#667eea',
-          }}>
-            {scenes.length}
-          </span>
-        </div>
-
-        {/* 右侧：操作按钮 */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
-          {/* 视图切换 */}
-          <div style={{
-            display: 'flex', background: 'rgba(255, 255, 255, 0.05)',
-            borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.08)', overflow: 'hidden',
-          }}>
-            <button
-              onClick={() => handleViewModeChange('grid')}
-              style={{
-                padding: '7px 12px', border: 'none', cursor: 'pointer',
-                background: viewMode === 'grid' ? 'rgba(102, 126, 234, 0.2)' : 'transparent',
-                color: viewMode === 'grid' ? '#667eea' : '#6b7280', fontSize: '14px',
-                borderRadius: '7px', transition: 'all 0.15s',
-              }}
-              title="网格视图"
-            >
-              ▦
-            </button>
-            <button
-              onClick={() => handleViewModeChange('list')}
-              style={{
-                padding: '7px 12px', border: 'none', cursor: 'pointer',
-                background: viewMode === 'list' ? 'rgba(102, 126, 234, 0.2)' : 'transparent',
-                color: viewMode === 'list' ? '#667eea' : '#6b7280', fontSize: '14px',
-                borderRadius: '7px', transition: 'all 0.15s',
-              }}
-              title="列表视图"
-            >
-              ☰
-            </button>
-          </div>
-
-          {/* 导入导出 */}
-          <button
-            onClick={handleExport}
-            style={{
-              ...btnBase('#22c55e'),
-              background: 'rgba(34, 197, 94, 0.1)',
-              border: '1px solid rgba(34, 197, 94, 0.3)',
-              color: '#22c55e',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(34, 197, 94, 0.2)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(34, 197, 94, 0.1)'; }}
-            title="导出场景"
-          >
-            📤 导出
-          </button>
-          <button
-            onClick={handleImport}
-            style={{
-              ...btnBase('#3b82f6'),
-              background: 'rgba(59, 130, 246, 0.1)',
-              border: '1px solid rgba(59, 130, 246, 0.3)',
-              color: '#3b82f6',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)'; }}
-            title="导入场景"
-          >
-            📥 导入
-          </button>
-
-          {/* 设置 */}
-          <button
-            onClick={onOpenSettings}
-            style={{
-              ...btnBase('#718096'),
-              background: 'transparent',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              color: '#718096',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'; e.currentTarget.style.color = '#a0aec0'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#718096'; }}
-          >
-            ⚙️ 设置
-          </button>
-
-          {/* 检查更新 */}
-          <button
-            onClick={onOpenUpdate}
-            style={{
-              ...btnBase('#718096'),
-              background: 'transparent',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              color: '#718096',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'; e.currentTarget.style.color = '#a0aec0'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#718096'; }}
-          >
-            🔄 更新
-          </button>
-
-          {/* 帮助 */}
-          <button
-            onClick={onOpenHelp}
-            style={{
-              ...btnBase('#718096'),
-              background: 'transparent',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              color: '#718096',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'; e.currentTarget.style.color = '#a0aec0'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#718096'; }}
-          >
-            ❓ 帮助
-          </button>
-
-          {/* 授权 */}
-          <button
-            onClick={onOpenLicense}
-            style={{
-              ...btnBase('#718096'),
-              background: 'transparent',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              color: '#718096',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'; e.currentTarget.style.color = '#a0aec0'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#718096'; }}
-          >
-            🔑 授权
-          </button>
-
-          {/* 新建场景 */}
-          <button
-            onClick={() => { if (canCreate()) setShowCreate(true); }}
-            style={{
-              ...btnBase('#667eea'),
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: '#fff', fontWeight: 600, border: 'none',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.02)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
-          >
-            + 新建场景
-          </button>
-        </div>
-      </div>
+      {/* 顶部菜单栏 */}
+      <TopMenuBar
+        onOpenSettings={onOpenSettings}
+        onOpenHelp={onOpenHelp}
+        onOpenUpdate={onOpenUpdate}
+        onOpenAbout={onOpenAbout}
+        onImport={handleImport}
+        onExport={handleExport}
+        onViewModeChange={handleViewModeChange}
+        viewMode={viewMode}
+        onOpenSearch={onOpenSearch}
+        onNewScene={() => { if (canCreate()) setShowCreate(true); }}
+      />
 
       {/* 创建场景表单 */}
       {showCreate && (

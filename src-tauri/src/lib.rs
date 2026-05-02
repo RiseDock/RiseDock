@@ -2,7 +2,7 @@ mod commands;
 mod crypto;
 mod models;
 
-use commands::{launcher, license, storage};
+use commands::{launcher, license, storage, icon};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -21,6 +21,7 @@ pub fn run() {
             None,
         ))
         .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
             // 创建托盘菜单
             let show_item = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
@@ -91,6 +92,8 @@ pub fn run() {
             storage::save_setting,
             storage::load_setting,
             storage::delete_setting,
+            // 图标提取
+            icon::extract_icon,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

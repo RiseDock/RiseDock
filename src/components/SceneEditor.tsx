@@ -34,12 +34,14 @@ export default function SceneEditor({ scene, onBack, highlightedItemId, onSetHot
   const [newItemType, setNewItemType] = useState<LaunchItemType>('app');
   const [newItemName, setNewItemName] = useState('');
   const [newItemPath, setNewItemPath] = useState('');
+  const [newItemIcon, setNewItemIcon] = useState<string | undefined>();
 
   // 编辑相关
   const [editingItem, setEditingItem] = useState<LaunchItem | null>(null);
   const [editItemName, setEditItemName] = useState('');
   const [editItemPath, setEditItemPath] = useState('');
   const [editItemType, setEditItemType] = useState<LaunchItemType>('app');
+  const [editItemIcon, setEditItemIcon] = useState<string | undefined>();
 
   // 拖拽相关
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -115,9 +117,22 @@ export default function SceneEditor({ scene, onBack, highlightedItemId, onSetHot
 
       if (selected && typeof selected === 'string') {
         setNewItemPath(selected);
+        setNewItemIcon(undefined); // 先清除旧图标
         if (!newItemName.trim()) {
           const name = selected.split(/[/\\]/).pop() || '';
           setNewItemName(name);
+        }
+        // 自动提取图标（仅对 exe 文件）
+        const ext = selected.split('.').pop()?.toLowerCase();
+        if (ext === 'exe' || ext === 'lnk') {
+          try {
+            const iconBase64 = await invoke<string>('extract_icon', { exePath: selected });
+            if (iconBase64) {
+              setNewItemIcon(iconBase64);
+            }
+          } catch (e) {
+            console.log('提取图标失败:', e);
+          }
         }
       }
     } catch (e) {
@@ -141,6 +156,19 @@ export default function SceneEditor({ scene, onBack, highlightedItemId, onSetHot
 
       if (selected && typeof selected === 'string') {
         setEditItemPath(selected);
+        setEditItemIcon(undefined); // 先清除旧图标
+        // 自动提取图标（仅对 exe 文件）
+        const ext = selected.split('.').pop()?.toLowerCase();
+        if (ext === 'exe' || ext === 'lnk') {
+          try {
+            const iconBase64 = await invoke<string>('extract_icon', { exePath: selected });
+            if (iconBase64) {
+              setEditItemIcon(iconBase64);
+            }
+          } catch (e) {
+            console.log('提取图标失败:', e);
+          }
+        }
       }
     } catch (e) {
       console.error('Browse failed:', e);
@@ -222,6 +250,19 @@ export default function SceneEditor({ scene, onBack, highlightedItemId, onSetHot
           else if (codeExts.includes(ext)) type = 'file';   // 代码文件保持file类型
           // 其他未知类型保持file
 
+          // 自动提取图标（仅对 exe/lnk 文件）
+          let icon: string | undefined;
+          if (ext === 'exe' || ext === 'lnk') {
+            try {
+              const iconBase64 = await invoke<string>('extract_icon', { exePath: path });
+              if (iconBase64) {
+                icon = iconBase64;
+              }
+            } catch (e) {
+              console.log('批量提取图标失败:', path, e);
+            }
+          }
+
           addLaunchItem(scene.id, {
             name,
             path,
@@ -229,6 +270,7 @@ export default function SceneEditor({ scene, onBack, highlightedItemId, onSetHot
             delay: 0,
             enabled: true,
             pinned: false,
+            icon,
           });
           addedCount++;
         }
@@ -258,9 +300,11 @@ export default function SceneEditor({ scene, onBack, highlightedItemId, onSetHot
         delay: 0,
         enabled: true,
         pinned: false,
+        icon: newItemIcon,
       });
       setNewItemName('');
       setNewItemPath('');
+      setNewItemIcon(undefined);
       setShowAddForm(false);
       showToast(`启动项「${newItemName.trim()}」添加成功`, 'success');
     }
@@ -271,6 +315,7 @@ export default function SceneEditor({ scene, onBack, highlightedItemId, onSetHot
     setEditItemName(item.name);
     setEditItemPath(item.path);
     setEditItemType(item.type);
+    setEditItemIcon(item.icon);
   };
 
   const handleSaveEdit = () => {
@@ -278,7 +323,8 @@ export default function SceneEditor({ scene, onBack, highlightedItemId, onSetHot
       updateLaunchItem(scene.id, editingItem.id, {
         name: editItemName.trim(),
         path: editItemPath.trim(),
-        type: editItemType
+        type: editItemType,
+        icon: editItemIcon,
       });
       setEditingItem(null);
     }

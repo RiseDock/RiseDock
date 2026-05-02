@@ -1,6 +1,6 @@
 {
   "name": "risedock",
-  "version": "1.1.20",
+  "version": "1.1.27",
   "description": "RiseDock - Scene-based workspace launcher",
   "type": "module",
   "scripts": {

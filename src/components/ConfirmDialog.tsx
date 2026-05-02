@@ -78,7 +78,7 @@ export default function ConfirmDialog({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 2000,
+        zIndex: 99999999,
         opacity: open ? 1 : 0,
         transition: 'opacity 0.2s',
         pointerEvents: open ? 'auto' : 'none',

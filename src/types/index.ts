@@ -12,6 +12,7 @@ export interface LaunchItem {
   order: number;
   enabled: boolean;
   pinned: boolean; // 是否置顶
+  icon?: string; // Base64 编码的图标 PNG
 }
 
 // 场景
