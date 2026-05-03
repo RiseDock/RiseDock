@@ -19,14 +19,16 @@ Thumbs.db
 # Build artifacts
 *.exe
 *.msi
+*.zip
 build.log
-build_log*.txt
+build2.log
 build_log*.txt
 build_err.txt
 build_stdout.txt
 build_stderr.txt
 build-deploy.bat
 build.bat
+build.cmd
 build-signed.ps1
 build_helper.py
 sign_helper.py
@@ -41,8 +43,34 @@ git_status*.txt
 # Updater signing keys (NEVER commit private key!)
 .tauri-updater-key
 .tauri-updater-key2
+.tauri-signing-key
+.tauri-signing-key.bak
+.tauri-signing-key.bak2
+.tauri-signing-key.pub
+.tauri-updater-key.pub
+.tauri-updater-key2.pub
 
 # OSS 部署相关（含密钥信息，绝不推送！）
 .ossutilconfig
 publish-oss.ps1
 latest.json
+upload_oss.ps1
+upload_oss.py
+ossutil-bin/
+ossutil.zip
+oss_upload_stdout.txt
+oss_upload_stderr.txt
+scripts/OssUtil.psm1
+
+# Release 临时文件
+release_notes_*.md
+
+# Gitee CI
+.gitee/
+.workflow/
+
+# Logs & temp
+*.log
+
+# git-rewrite temp
+.git-rewrite/
