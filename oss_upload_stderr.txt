@@ -1,4 +1,0 @@
-Traceback (most recent call last):
-  File "D:\AI_WorkDir\WorkBuddy\risedock\upload_oss.py", line 4, in <module>
-    import oss2
-ModuleNotFoundError: No module named 'oss2'
